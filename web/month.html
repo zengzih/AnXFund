@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <style>
+    #content div {
+      float: left;
+      padding: 10px;
+      border: 1px solid #ccc;
+      margin-left: -1px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div id="content">
+</div>
+<button onclick="prevWeek()">上一周</button>
+<button onclick="nextWeek()">下一周</button>
+</body>
+<script>
+  const months = [
+    {"isDefaultDate": false, "year": 2018, "month": 10, "week": 1, "day": 29}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 10,
+      "week": 2,
+      "day": 30
+    }, {"isDefaultDate": false, "year": 2018, "month": 10, "week": 3, "day": 31}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 4,
+      "day": 1
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 5, "day": 2}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 6,
+      "day": 3
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 0, "day": 4}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 1,
+      "day": 5
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 2, "day": 6}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 3,
+      "day": 7
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 4, "day": 8}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 5,
+      "day": 9
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 6, "day": 10}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 0,
+      "day": 11
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 1, "day": 12}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 2,
+      "day": 13
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 3, "day": 14}, {
+      "isDefaultDate": true,
+      "year": 2018,
+      "month": 11,
+      "week": 4,
+      "day": 15
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 5, "day": 16}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 6,
+      "day": 17
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 0, "day": 18}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 1,
+      "day": 19
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 2, "day": 20}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 3,
+      "day": 21
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 4, "day": 22}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 5,
+      "day": 23
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 6, "day": 24}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 0,
+      "day": 25
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 1, "day": 26}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 2,
+      "day": 27
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 3, "day": 28}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 11,
+      "week": 4,
+      "day": 29
+    }, {"isDefaultDate": false, "year": 2018, "month": 11, "week": 5, "day": 30}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 12,
+      "week": 6,
+      "day": 1
+    }, {"isDefaultDate": false, "year": 2018, "month": 12, "week": 0, "day": 2}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 12,
+      "week": 1,
+      "day": 3
+    }, {"isDefaultDate": false, "year": 2018, "month": 12, "week": 2, "day": 4}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 12,
+      "week": 3,
+      "day": 5
+    }, {"isDefaultDate": false, "year": 2018, "month": 12, "week": 4, "day": 6}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 12,
+      "week": 5,
+      "day": 7
+    }, {"isDefaultDate": false, "year": 2018, "month": 12, "week": 6, "day": 8}, {
+      "isDefaultDate": false,
+      "year": 2018,
+      "month": 12,
+      "week": 0,
+      "day": 9
+    }];
+  const content = document.getElementById('content');
+  var css=function(t,s){
+    s=document.createElement('style');
+    s.innerText=t;
+    document.body.appendChild(s);
+  };
+  css('#content:after{}');
+</script>
+</html>

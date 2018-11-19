@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>待办与日历</title>
+  <link rel="stylesheet" href="./scui/1.0.1/index.css">
+  <link rel="stylesheet" href="./scui/2.0.1/index.css">
+  <link rel="stylesheet" href="./scui/2.0.1/skin1.css">
+  <link rel="stylesheet" type="text/css" href="css/calender.css">
+  <script src="jQuery/1.11.3/jquery.min.js"></script>
+  <script src="./vue/2.3.0/index.js"></script>
+  <script src="./scui/2.0.1/index.js"></script>
+  <script src="./vue-resource/1.3.3/vue-resource.min.js"></script>
+  <script src="./scui/1.0.1/scui.min.js"></script>
+  <script src="./util/publicComponents.js"></script>
+  <script src="./util/gobal.js"></script>
+  <style>
+    .tab_nav-slot {
+      position: absolute;
+      height: 20px;
+      padding: 0 5px;
+      line-height: 20px;
+      color: red;
+      font-size: 12px;
+      text-align: center;
+      right: -14px;
+      top: -1px;
+    }
+  </style>
+  <script src="../../zhuce.js"></script>
+</head>
+<body>
+<div id="app">
+  <el-tabs v-model="activeName" @tab-click="handleClick">
+    <el-tab-pane label="待办事项" name="first">
+      <div slot="tabNavSlot" class="tab_nav-slot">111</div>
+      <div class="sc-box-content">
+        <el-form>
+          <sc-form-layout>
+            <sc-form-layout-col>
+              <el-button>批量操作</el-button>
+            </sc-form-layout-col>
+            <sc-form-layout-col v-for="col in layoutCol" :width="col.width || 'standard'" :align="col.align || ''">
+              <el-form-item :label="col.label">
+                <v-render :row="queryConditions" :column="col" :render="col.render"></v-render>
+              </el-form-item>
+            </sc-form-layout-col>
+          </sc-form-layout>
+        </el-form>
+      </div>
+
+      <div>
+        <v-table :column="column" :height="tableHeight - 24"></v-table>
+      </div>
+      <div class="sc-box-content" style="text-align: right">
+        <v-pagination></v-pagination>
+      </div>
+    </el-tab-pane>
+    <el-tab-pane label="信披露事项日历" name="second">
+      <v-calendar :data="data" :week-mode="weekMode">
+        <el-button type="primary" @click="Refresh">刷新</el-button>
+        <el-button type="primary" @click="Slide">周/月切换</el-button>
+        <el-button type="primary" @click="Export">导出</el-button>
+      </v-calendar>
+    </el-tab-pane>
+  </el-tabs>
+
+  <!-- 日历查看更多 -->
+  <el-dialog :title="calenderTitle" v-model="calenderVisible" class="sc-small" :close-on-click-modal="false" @close="calenderCancel">
+    <v-table :data="calenderData" :height="400" :column="calenderColumn"></v-table>
+  </el-dialog>
+
+  <!-- 表格操作 -->
+  <el-dialog title="操作" v-model="calenderVisible" class="sc-small" :close-on-click-modal="false" @close="calenderCancel">
+    <el-upload
+      :action="fileAction"
+      :on-preview="handlePreview"
+      :file-list="fileList">
+      <el-button size="small" type="primary">点击上传</el-button>
+      <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过500kb</div>
+    </el-upload>
+  </el-dialog>
+
+
+
+</div>
+</body>
+<script>
+  var calendar = {
+    data: function() {
+      return {
+        data: [],
+        weekMode: false,
+        calenderTitle: '',
+        calenderVisible: false,
+        calenderData: [],
+        calenderColumn: []
+      }
+    },
+    created: function() {
+      this.data = [
+        {year: '2018', month: '11', day: '13', content: '这是测试'}
+      ];
+
+      this.calenderColumn = [
+        { label: '信披事项名称' },
+        { label: '完成状态' },
+        { label: '操作' },
+      ]
+    },
+    methods: {
+      calenderCancel: function() {
+        this.calenderVisible = false;
+      },
+      Slide: function() {
+        this.weekMode = !this.weekMode;
+      },
+      Export: function() {
+
+      },
+      Refresh: function() {
+
+      }
+    }
+  };
+  var todoList = {
+    data: function() {
+      return {
+        layoutCol: [],
+        queryConditions: {
+
+        },
+        // 数据源
+        dataSource: {
+          departments: []
+        },
+        // 表格
+        column: [],
+        tableData: [],
+        tableHeight: '',
+        totalPage: 0,
+
+        //上传
+        fileList: []
+      }
+    },
+    mounted: function() {
+      gobal.getTableHeight(this);
+    },
+    created: function() {
+      var _this = this;
+      this.layoutCol = [
+        {
+          label: '截止日期', prop: 'endData', render: function (h, params) {
+          return _this.getRenderDate(h, params);
+        }
+        },
+        {
+          label: '责任部门', prop: 'department', dataName: 'departments', render: function (h, params) {
+          return _this.getRenderSelect(h, params);
+        }
+        },
+        {
+          label: '关键字', prop: 'keyword', render: function (h, params) {
+          return _this.getRenderInput(h, params);
+        }
+        },
+        {
+          width: '120px', type: 'operation', align: 'right', render: function (h) {
+          return h('div', [
+            h('ElButton', {
+              props: {
+                type: 'primary'
+              },
+              on: {
+                click: function() {
+                  _this.onQuery();
+                }
+              }
+            }, '查询'),
+            h('ElButton', {
+              props: {
+                type: 'primary'
+              },
+              on: {
+                click: function() {
+                  _this.onReset();
+                }
+              }
+            }, '重置')
+          ])
+        }
+        }
+      ];
+      this.column = [
+        { type: 'selection', align: 'center' },
+        { label: '信波事项名称', prop: '' },
+        { label: '分工事项名称', prop: '' },
+        { label: '责任部门', prop: '' },
+        { label: '责任岗位', prop: '' },
+        { label: '责任人员', prop: '' },
+        { label: '截止日期', prop: '' },
+        { label: '驳回原因', prop: '' },
+        { label: '建议意见', prop: '' },
+        { label: '操作', align: 'center', type: 'text', size: 'small', renderCell: function (h, params) {
+          return h('div', {}, [
+            [
+              { label: '查看', class: 'el-icon-edit' },
+              { label: '修改', class: 'el-icon-document' },
+              { label: '删除', class: 'el-icon-delete' },
+            ].map(function(elt) {
+              return _this.getTooltipButton(h, params, { label: elt.label, class: elt.class, callbackFunc: function() {
+                _this.handleOperation(elt.label)
+              }});
+            })
+          ]);
+        } },
+      ]
+    },
+    methods: {
+      handleSelection: function(selection) {
+
+      },
+      // 操作
+      handleOperation: function(type) {
+        switch (type) {
+          case '查看':
+            break;
+          case '修改':
+            break;
+          case '删除':
+            break;
+        }
+      }
+    },
+    updated: function() {
+      gobal.getTableHeight(this);
+    },
+    handlePreview: function(fileList) {
+
+    }
+  };
+
+  new Vue({
+    mixins: [publicComponents, todoList, calendar, publicMethod],
+    el: "#app",
+    data: {
+      activeName: 'first',
+      urls: {
+        form: '',
+        table: '',
+        fileAction: ''
+      }
+    },
+    created: function () {
+      $("body").addClass("sc-skin1")
+    },
+    methods: {
+      handleClick: function () {
+
+      }
+    }
+  })
+</script>
+</html>

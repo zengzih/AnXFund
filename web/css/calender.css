@@ -1,0 +1,86 @@
+* {
+  padding: 0;
+  margin: 0;
+}
+.calendar_wrapper {
+  background: #fff;
+  border-radius: 5px;
+}
+.week_mode_calender .kl-calendar_day-box {
+  height: 300px!important;
+}
+
+.calendar_wrapper .calendar_header {
+  height: 60px;
+  overflow: hidden;
+  padding: 0 20px;
+}
+.calendar_header .calendar_render-info, .calendar_header .calendar_slot {
+  height: 100%;
+  line-height: 60px;
+  float: left;
+}
+.calendar_header .calendar_slot {
+  margin-right: 10px;
+}
+
+.calendar_header .calendar_tool {
+  height: 100%;
+  line-height: 60px;
+}
+.calendar_header .calendar_tool .tool_btn {
+  padding: 2px 15px;
+  border: 1px solid #cccc;
+  border-radius: 4px;
+  margin: 0 2px;
+  cursor: pointer;
+}
+.calendar_header .calendar_tool .tool_btn:hover {
+  border-color: #a9a8a8cc;
+}
+.calendar_header .calendar_tool .tool_btn i {
+  color: #7a7a7a;
+}
+
+.calendar_header .calendar_render-info span {
+  font-size: 25px;
+  font-weight: bold;
+  color: #000;
+}
+.calendar_header .calendar_tool {
+  height: 100%;
+  float: right;
+}
+.calendar_header .calendar_render-info .calendar_year, .calendar_header .calendar_render-info .kl-calendar_month{
+}
+
+
+.kl-calendar_day-box .cell {
+  height: 100px;
+  padding: 5px!important;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+  transition: all 0.05s linear;
+}
+
+.kl-calendar_day-box .cell .day {
+  font-size: 16px;
+  font-weight: bold;
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  line-height: 30px;
+  border-radius: 50%;
+}
+.kl-calendar_day-box .cell .day-today .day {
+  background: rgb(236, 77, 61);
+  color: #fff;
+
+}
+.kl-calendar_day-box .cell:hover {
+  border: 2px solid rgb(236, 77, 61);
+}
+.kl-calendar_day-box.this_date .cell{
+  border: 2px solid rgb(236, 77, 61);
+}
