@@ -71,14 +71,31 @@
   </el-dialog>
 
   <!-- 表格操作 -->
-  <el-dialog title="操作" v-model="calenderVisible" class="sc-small" :close-on-click-modal="false" @close="calenderCancel">
-    <el-upload
-      :action="fileAction"
-      :on-preview="handlePreview"
-      :file-list="fileList">
-      <el-button size="small" type="primary">点击上传</el-button>
-      <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过500kb</div>
-    </el-upload>
+  <el-dialog title="操作" v-model="tableVisible" class="sc-small" :close-on-click-modal="false" @close="tableCancel">
+    <el-form :mode="formData">
+      <el-form-item>
+        <el-upload
+          :action="urls.fileAction"
+          :on-preview="handlePreview"
+          :file-list="fileList">
+          <el-button size="small" type="upload" class=""> 点击上传</el-button>
+          <div slot="tip" class="el-upload__tip">只能上传docx文件</div>
+        </el-upload>
+      </el-form-item>
+      <el-form-item label="选择流程">
+        <sc-select v-model="formData.process" :data="processData" :default-props="{ label: 'ddName', nodeKey: 'ddCode' }"></sc-select>
+      </el-form-item>
+
+      <el-form-item label="备注">
+        <el-input type="textarea" v-model="formData.remarks"></el-input>
+      </el-form-item>
+    </el-form>
+
+    <div slot="footer"> <!--'生成文件', '驳回', '确定', '取消'-->
+      <el-button type="sync" @click="CreateFile">生成文件</el-button>
+      <el-button type="confirm" @click="Confirm">确定</el-button>
+      <el-button type="cancel" @click="calenderCancel">取消</el-button>
+    </div>
   </el-dialog>
 
 
@@ -109,9 +126,6 @@
       ]
     },
     methods: {
-      calenderCancel: function() {
-        this.calenderVisible = false;
-      },
       Slide: function() {
         this.weekMode = !this.weekMode;
       },
@@ -130,10 +144,17 @@
         queryConditions: {
 
         },
+        formData: {
+          remarks: '', // 备注
+          process: '' // 流程
+        },
         // 数据源
         dataSource: {
           departments: []
         },
+        // 流程下拉数据
+        processData: [],
+
         // 表格
         column: [],
         tableData: [],
@@ -141,7 +162,9 @@
         totalPage: 0,
 
         //上传
-        fileList: []
+        fileList: [],
+        operationFooter: [{ label: '生成文件', type: '' }]
+
       }
     },
     mounted: function() {
@@ -218,6 +241,9 @@
       ]
     },
     methods: {
+      tableCancel: function() {
+        this.calenderVisible = false;
+      },
       handleSelection: function(selection) {
 
       },
@@ -231,14 +257,20 @@
           case '删除':
             break;
         }
+      },
+      CreateFile: function() {
+
+      },
+      Confirm: function() {
+
+      },
+      handlePreview: function(fileList) {
+
       }
     },
     updated: function() {
       gobal.getTableHeight(this);
     },
-    handlePreview: function(fileList) {
-
-    }
   };
 
   new Vue({

@@ -202,8 +202,9 @@ Vue.directive('otherRender', {
                 icon = item.icon;
             }
         });
-        className.push(vClass);
-        el.setAttribute('class', className.join(' '));
+        // className.push(vClass);
+        vm.context.customClass.push(vClass);
+        // el.setAttribute('class', className.join(' '));
         vm.context.otherRender = function(h, ctx) {
             return h('i', {
                 class: icon
@@ -1687,7 +1688,7 @@ var request = {
     }
     $.ajax({
       "type": type,
-      "async": isAsync !== undefined ? isAsync : true,//使用同步的方式,true为异步方式
+      "async":  isAsync !== undefined ? isAsync : true,//使用同步的方式,true为异步方式
       "url": url,
       //加上此句需要  contentType: 'application/json', JSON.stringify(jsonData),
       timeout: ajaxParmas.timeout || 0,
@@ -3765,7 +3766,7 @@ var configuration = { //组件参数配置
   getTree: function () {//用于自定义配置
     return utils.objClone(this.tree, true);
   },
-  arrPageInitDataObjName: ["queryConditions", "fuzzyQueryConditions", "orderPageQuery", "treeSelect", "mitiSelect", "cascaderSelect", "selections", "formData"],//"formData" "currentPage"
+  arrPageInitDataObjName: ["queryConditions", "fuzzyQueryConditions", "orderPageQuery", "treeSelect", "mitiSelect", "cascaderSelect", "selections", "formData","state"],//"formData" "currentPage"
 }
 
 
