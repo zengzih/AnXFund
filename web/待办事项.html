@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="./scui/2.0.1/index.css">
   <link rel="stylesheet" href="./scui/2.0.1/skin1.css">
   <link rel="stylesheet" type="text/css" href="css/calender.css">
+  <link rel="stylesheet" type="text/css" href="iconfont/17.7.5/iconfont.css">
   <script src="jQuery/1.11.3/jquery.min.js"></script>
   <script src="./vue/2.3.0/index.js"></script>
   <script src="./scui/2.0.1/index.js"></script>
@@ -66,7 +67,7 @@
   </el-tabs>
 
   <!-- 日历查看更多 -->
-  <el-dialog :title="calenderTitle" v-model="calenderVisible" class="sc-small" :close-on-click-modal="false" @close="calenderCancel">
+  <el-dialog :title="calenderTitle" v-model="calenderVisible" class="sc-small" :close-on-click-modal="false" @close="tableCancel">
     <v-table :data="calenderData" :height="400" :column="calenderColumn"></v-table>
   </el-dialog>
 
@@ -109,7 +110,7 @@
         data: [],
         weekMode: false,
         calenderTitle: '',
-        calenderVisible: false,
+        tableVisible: false,
         calenderData: [],
         calenderColumn: []
       }

@@ -1,0 +1,10 @@
+@charset "UTF-8";
+.sc-theme .blue-color {color:blue}
+.sc-theme .red-color {color:red}
+.sc-theme .black-color {color:#333}
+.sc-theme .orange-color{color:#ff9800}
+/*饿了么message-box消息框样式调整*/
+.el-message-box .el-message-box__btns>button:first-child{
+	float:right;
+	margin-left:10px;
+}

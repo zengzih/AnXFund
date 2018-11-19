@@ -1,0 +1,117 @@
+
+.sc_white_btn {
+  color: #1f223d;
+  background: #fff;
+  border: 1px solid #c4c4c4;
+}
+.sc_white_btn:hover, .sc_white_btn:focus{
+  color: #526fe1;
+  background: #fff;
+  border: 1px solid #526fe1;
+}
+.sc_white_btn i {
+  margin-right: 6px!important;
+  font-size: 12px!important;
+}
+
+.sc_blue_btn {
+  color:white;
+  background: #5B7BFA;
+  border-color: #5B7BFA;
+}
+.sc_blue_btn i {
+ margin-right: 6px!important; 
+  font-size: 12px!important;
+}
+.sc_blue_btn:hover,.sc_blue_btn:focus {
+  background: #4865D7;
+  border-color:#4865D7;
+  color: #fff;
+}
+
+.sc_turquoise_btn {
+  color:white;
+  background: #00CAAC;
+  border-color: #00CAAC;
+}
+.sc_turquoise_btn:hover,.sc_turquoise_btn:focus {
+  background:  #00AE94;
+  border-color:  #00AE94;
+  color: #fff;
+}
+.sc_turquoise_btn i {
+  margin-right: 6px!important; 
+  font-size: 12px!important;
+}
+.sc_dsBlue_btn {
+  color:white;
+  background: #2BC1FF;
+  border-color: #2BC1FF;
+}
+.sc_dsBlue_btn:hover,.sc_dsBlue_btn:focus {
+  background:  #22A5DB;;
+  border-color:  #22A5DB;;
+  color: #fff;
+}
+.sc_dsBlue_btn i {
+  margin-right: 6px!important; 
+  font-size: 12px!important;
+}
+.sc_violet_btn {
+  color:white;
+  background: #A578FF;
+  border-color: #A578FF;
+}
+.sc_violet_btn:hover,.sc_violet_btn:focus{
+  color:white;
+  background: #8960DA;
+  border-color: #8960DA;
+}
+.sc_violet_btn i {
+   margin-right: 6px!important; 
+  font-size: 12px!important;
+}
+.sc_orRed_btn {
+  color:white;
+  background: #FB6A59;
+  border-color: #FB6A59;
+}
+.sc_orRed_btn:hover,.sc_orRed_btn:focus {
+  background:  #DB5647;
+  border-color:  #DB5647;
+  color: #fff;
+}
+
+.sc_orRed_btn i {
+  margin-right: 6px!important; 
+  font-size: 12px!important;
+}
+.sc_slGray_btn {
+  color:white;
+  background: #848FBD;
+  border-color: #848FBD;
+}
+.sc_slGray_btn:hover,.sc_slGray_btn:focus{
+  color:white;
+  background:  #6975A6;
+  border-color:  #6975A6;
+}
+.sc_slGray_btn i {
+  margin-right: 6px!important; 
+  font-size: 12px!important;
+}
+.sc_orange_btn {
+  color:white;
+  background: #FFA044;
+  border-color: #FFA044;
+}
+.sc_orange_btn:hover,.sc_orange_btn:focus {
+  color:white;
+  background: #DF8C32;
+  border-color: #DF8C32;
+}
+.sc_orange_btn i {
+ margin-right: 6px!important;
+  font-size: 12px!important;
+}
+
