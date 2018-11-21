@@ -1,3 +1,70 @@
+var InitPublicProperty = function(opt) {
+  opt = opt || {};
+  this.orderPageQuery = {};
+  Object.keys(opt).forEach(function(key) {
+    this[key] = opt[key];
+  }.bind(this));
+  this.init();
+};
+InitPublicProperty.prototype.init = function() {
+  this.pageSize = gobal.pagination.pageSize;
+  this.pageSizes = gobal.pagination.pageSizes;
+  if (this.queryConditions) {
+    this.queryConditions[gobal.pagination.page] = 1;
+    this.queryConditions[gobal.pagination.rows] = this.pageSize;
+    this.queryInit = utils.myAssign({}, this.queryInit, this.queryConditions);
+
+    this.orderPageQuery[gobal.pagination.page] = 1;
+    this.orderPageQuery[gobal.pagination.rows] = this.pageSize;
+    this.orderPageQuery = utils.myAssign({}, this.orderPageQuery, this.queryConditions); // 查询参数初始化
+  }
+};
+InitPublicProperty.prototype.commit = function(name) {
+  var arg = [].slice.call(arguments, 1);
+  if (this.mutations[name]) {
+    this.mutations[name].apply(this, arg);
+  }
+};
+InitPublicProperty.prototype.mutations = {
+  query: function() {
+    this.commit('getTableData');
+  },
+  reset: function() {
+    this.pageSize = gobal.pagination.pageSize;
+    this.pageSizes = gobal.pagination.pageSizes;
+    this.queryConditions = utils.myAssign({}, this.queryConditions, this.queryInit);
+    this.orderPageQuery = utils.myAssign({}, this.orderPageQuery, this.queryInit);
+    this.currentPage = 1;
+    this.commit('getTableData');
+  },
+  getTableData: function(queryConditions) {
+    var _this = this;
+    var curUrl = utils.isNotEmpty(this.tableUrl) ? this.tableUrl : (this.vm.urls ? this.vm.urls.table : '');
+    var curQueryConditions = utils.isNotEmpty(queryConditions) ? queryConditions : this.queryConditions;
+    if (!curUrl) return;
+    request.post(this.vm, curUrl, curQueryConditions, function(data) {
+      this.tableData = data.rows;
+      this.totalPage = data.total;
+      if(this.vm.$refs['myTable']){
+        this.vm.$refs['myTable'].resetScroll();
+      }
+    }.bind(this));
+  },
+  currentChange: function(val) {
+    this.currentPage = val;
+    this.currentRow = val;
+    this.orderPageQuery[gobal.pagination.page] = val;
+    this.queryConditions[gobal.pagination.page] = val;
+    this.commit('getTableData', this.orderPageQuery);
+  },
+  sizeChange: function(val) {
+    this.pageSize = val;
+    this.currentPage = 1;
+    this.orderPageQuery[gobal.pagination.rows] = this.pageSize;
+    this.queryConditions[gobal.pagination.rows] = this.pageSize;
+    this.commit('getTableData', this.orderPageQuery);
+  }
+};
 var publicComponents = {
   components: {
     VRender: {
@@ -24,36 +91,44 @@ var publicComponents = {
       functional: true,
       props: {
         currentChange: Function,
+        target: Object,
         sizeChange: Function,
         pageSizes: [Number, String],
-
+        pageSize: [Number, String],
+        totalPage: [Number, String],
+        currentPage: [Number, String],
+        className: String
       },
       render: function(h, ctx) {
         var _this = ctx.parent;
         return h('ElPagination', {
-          class: 'sc-box-content sc-box-content-page',
+          class: 'sc-box-content-page ' + (ctx.props.className ? ctx.props.className : 'sc-box-content'),
           props: {
-            currentPage: 1,
-            pageSizes: gobal.pagination.pageSizes,
-            pageSize: gobal.pagination.pageSize,
-            total: _this.totalPage,
+            currentPage: ctx.props.currentPage || 1,
+            pageSizes: ctx.props.pageSizes || gobal.pagination.pageSizes,
+            pageSize: ctx.props.pageSize || gobal.pagination.pageSize,
+            total: ctx.props.totalPage || _this.totalPage,
             layout: 'total, sizes, prev, pager, next, jumper'
           },
           on: {
             'current-change': function(val) {
               if (ctx.props.currentChange) {
                 ctx.props.currentChange(val);
+              } else if (ctx.props.target) {
+                ctx.props.target.commit('currentChange', val)
               } else {
                 _this.currentPage = val;
                 _this.currentRow = val;
-                _this.orderPageQuery[gobal.pagination.page] = val;
-                _this.queryConditions[gobal.pagination.page] = val;
+                _this.orderPageQuery && (_this.orderPageQuery[gobal.pagination.page] = val);
+                _this.queryConditions && (_this.queryConditions[gobal.pagination.page] = val);
                 _this.getTableData(_this.orderPageQuery);
               }
             },
             'size-change': function(val) {
               if (ctx.props.sizeChange) {
                 ctx.props.sizeChange(val);
+              } else if (ctx.props.target) {
+                ctx.props.target.commit('sizeChange', val);
               } else {
                 _this.pageSize = val;
                 _this.orderPageQuery && (_this.orderPageQuery[gobal.pagination.rows] = _this.pageSize);
@@ -66,7 +141,6 @@ var publicComponents = {
       }
     },
     VTable: {
-      functional: true,
       props: {
         column: Array,
         data: Array,
@@ -74,36 +148,44 @@ var publicComponents = {
           type: Boolean,
           default: true
         },
+        configColumns: Array,
+        showConfigTable: Boolean,
         height: [String, Number],
         sortChange: Function
       },
       render: function (h, ctx) {
-        var self = ctx.parent;
-        var column = ctx.props.column || self.column;
+        var self = this.$parent;
+        var _this = this;
+        var column = this.column === undefined ? self.column : this.column;
         return h('ElTable', {
           props: {
-            data: ctx.props.data || self.data,
-            height: ctx.props.height || self.tableHeight
+            configColumns: this.configColumns,
+            showConfigTable: this.showConfigTable,
+            data: this.data === undefined ? self.data : this.data,
+            height: this.height === undefined ? self.tableHeight : this.height
           },
           on: {
             // 事件
             'sort-change': function (val) {
-              if (ctx.props.onSort) {
-                ctx.props.sortChange(val);
+              if (this.onSort) {
+                this.sortChange(val);
               } else {
                 self.onSort(val);
               }
             },
             'selection-change': function(selection) {
-              if (ctx.props.handleSelection) {
-                ctx.props.handleSelection(selection);
+              if (this.handleSelection) {
+                this.handleSelection(selection);
               } else {
                 self.handleSelection(selection);
               }
+            },
+            openconfigtable: function() {
+              _this.$emit('openconfigtable');
             }
           }
         }, [
-          self._l(column, function (elt) {
+          this._l(column, function (elt) {
             var _default = {headerAlign: 'center'};
             var colParams = {};
             for (var i in elt) {
@@ -685,7 +767,7 @@ var publicComponents = {
       var col = params.column;
       return h('ElTooltip', {
         props: {
-          effect: 'dark',
+          effect: options.effect || 'dark',
           content: options.label,
           placement: 'left',
           enterable: false
@@ -807,8 +889,6 @@ var publicComponents = {
     getRenderScSelect: function(h, params) {
       var row = params.row;
       var col = params.column;
-      var row = params.row;
-      var col = params.column;
       var index = params.index;
       var option = this.dataSource[col.dataName] || [];
       if (col.sourceParam) { // 关联下拉
@@ -834,10 +914,46 @@ var publicComponents = {
           }
         }
       })
+    },
+    getRenderUpload: function(h, params) {
+      var row = params.row;
+      var col = params.column;
+      var index = params.index;
+      return h('ElUpload', {
+        props: {
+          action: col.action || '',
+          onPreview: col.onPreview || this.onPreview,
+          onRemove: col.onRemove || this.onRemove,
+          onSuccess: col.onSuccess || this.onSuccess,
+          onChange: col.onChange || this.onChange,
+          beforeUpload: col.beforeUpload || this.beforeUpload,
+          disabled: col.disabled,
+          fileList: col.fileList,
+          data: col.data
+        },
+        class: col.class,
+        on: {
+          onChange: function () {},
+          onPreview: function(){},
+          onRemove: function () {},
+          onSuccess: function() {},
+          beforeUpload: function() {},
+        }
+      }, [
+        h('ElButton', {
+          props: {
+            size: 'small',
+            type: 'primary'
+          }
+        }, '点击上传'),
+        h('div', {
+          slot: 'tip',
+          class: 'el-upload__tip'
+        }, (col.tipMsg instanceof Function) ? col.tipMsg() : col.tipMsg)
+      ])
     }
   }
 };
-
 var publicMethod = {
   data: function() {
     return {

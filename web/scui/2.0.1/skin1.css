@@ -512,7 +512,7 @@
 
 .sc-skin1 .el-dialog .el-dialog__body {
   padding: 6px 6px 0;
-  max-height: 501px
+  max-height: 500px
 }
 
 .sc-skin1 .el-dialog .el-dialog__body .el-transfer-panel__item table.sc-layout-table {

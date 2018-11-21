@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="./scui/2.0.1/skin1.css">
   <link rel="stylesheet" type="text/css" href="css/calender.css">
   <link rel="stylesheet" type="text/css" href="iconfont/17.7.5/iconfont.css">
+  <link rel="stylesheet" type="text/css" href="styles/btn.styles.css">
   <script src="jQuery/1.11.3/jquery.min.js"></script>
   <script src="./vue/2.3.0/index.js"></script>
   <script src="./scui/2.0.1/index.js"></script>
@@ -28,10 +29,9 @@
       top: -1px;
     }
   </style>
-  <script src="../../zhuce.js"></script>
 </head>
 <body>
-<div id="app">
+<div id="app" v-cloak class="sc-theme is-standard">
   <el-tabs v-model="activeName" @tab-click="handleClick">
     <el-tab-pane label="待办事项" name="first">
       <div slot="tabNavSlot" class="tab_nav-slot">111</div>
@@ -39,7 +39,7 @@
         <el-form>
           <sc-form-layout>
             <sc-form-layout-col>
-              <el-button>批量操作</el-button>
+              <el-button type="" @click="batchOperation">批量操作</el-button>
             </sc-form-layout-col>
             <sc-form-layout-col v-for="col in layoutCol" :width="col.width || 'standard'" :align="col.align || ''">
               <el-form-item :label="col.label">
@@ -59,15 +59,15 @@
     </el-tab-pane>
     <el-tab-pane label="信披露事项日历" name="second">
       <v-calendar :data="data" :week-mode="weekMode">
-        <el-button type="primary" @click="Refresh">刷新</el-button>
+        <el-button type="refresh" @click="Refresh">刷新</el-button>
         <el-button type="primary" @click="Slide">周/月切换</el-button>
-        <el-button type="primary" @click="Export">导出</el-button>
+        <el-button type="export" @click="Export">导出</el-button>
       </v-calendar>
     </el-tab-pane>
   </el-tabs>
 
   <!-- 日历查看更多 -->
-  <el-dialog :title="calenderTitle" v-model="calenderVisible" class="sc-small" :close-on-click-modal="false" @close="tableCancel">
+  <el-dialog :title="calenderTitle" v-model="calenderVisible" class="sc-small" :close-on-click-modal="false" @close="calenderCancel">
     <v-table :data="calenderData" :height="400" :column="calenderColumn"></v-table>
   </el-dialog>
 
@@ -92,14 +92,73 @@
       </el-form-item>
     </el-form>
 
-    <div slot="footer"> <!--'生成文件', '驳回', '确定', '取消'-->
-      <el-button type="sync" @click="CreateFile">生成文件</el-button>
+    <div slot="footer">
+      <el-button type="sync" @click="createFile">生成文件</el-button>
       <el-button type="confirm" @click="Confirm">确定</el-button>
       <el-button type="cancel" @click="calenderCancel">取消</el-button>
     </div>
   </el-dialog>
 
+  <!-- 批量操作 -->
+  <el-dialog title="批量操作" v-model="batchVisible" class="sc-middle" size="tiny" :close-on-click-modal="false" @close="batchCancel">
+    <el-input type="textarea"></el-input>
+    <div slot="footer">
+      <el-button type="confirm" @click="batchSave">确定</el-button>
+      <el-button type="cancel" @click="batchCancel">取消</el-button>
+    </div>
+  </el-dialog>
 
+  <el-dialog title="生成文件" v-model="createFileVisible" class="sc-small" size="tiny" :close-on-click-modal="false" @close="createFileCancel">
+    <el-form :model="createFileForm">
+      <sc-form-layout label-width = "middle">
+        <sc-form-layout-row v-for="col in createFileColumn">
+          <sc-form-layout-col>
+            <el-form-item :label="col.label">
+              <v-render :row="createFileForm" :column="col" :render="col.render"></v-render>
+            </el-form-item>
+          </sc-form-layout-col>
+        </sc-form-layout-row>
+      </sc-form-layout>
+    </el-form>
+    <div slot="footer">
+      <el-button type="confirm" @click="createFileSave">确定</el-button>
+      <el-button type="cancel" @click="createFileCancel">取消</el-button>
+    </div>
+  </el-dialog>
+
+  <!-- 查看文件 -->
+  <el-dialog title="查看文件" v-model="readTaleDataVisible" class="sc-small" :close-on-click-modal="false" @close="readTableDataCancel">
+    <el-button type="download" @click="batchDownload" style="margin-bottom: 5px">批量下载</el-button>
+    <v-table :data="readTableData" :height="300" :column="readTaleColumn"></v-table>
+    <div slot="footer">
+      <el-button type="save" @click='readTableSave'>保存</el-button>
+      <el-button type="cancel" @click='readTableCancel'>取消</el-button>
+    </div>
+  </el-dialog>
+
+  <!-- 替换——上传文件 -->
+  <el-dialog title="上传文件" v-model="readUploadVisible" class="sc-small" :close-on-click-modal="false" @close="readUploadCancel">
+    <el-upload
+      class="upload-demo"
+      action="https://jsonplaceholder.typicode.com/posts/"
+      :on-preview="readUploadPreview"
+      :file-list="fileList">
+      <el-button size="small" type="upload">点击上传</el-button>
+      <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过500kb</div>
+    </el-upload>
+    <div slot="footer">
+      <el-button type="save" @click="readUploadSave">保存</el-button>
+      <el-button type="cancel" @click="readUploadCancel">取消</el-button>
+    </div>
+  </el-dialog>
+
+  <!-- 查看流程 -->
+  <el-dialog title="查看流程" v-model="techProcessVisible" class="sc-large" :close-on-click-modal="false" @close="techProcessVisible=false">
+    <v-table :data="techProcessData" :height="400" :column="techProcessColumn"></v-table>
+    <div slot="footer">
+      <el-button type="cancel" @click="techProcessVisible=false">取消</el-button>
+    </div>
+  </el-dialog>
 
 </div>
 </body>
@@ -110,7 +169,7 @@
         data: [],
         weekMode: false,
         calenderTitle: '',
-        tableVisible: false,
+        calenderVisible: false,
         calenderData: [],
         calenderColumn: []
       }
@@ -135,9 +194,109 @@
       },
       Refresh: function() {
 
+      },
+      calenderCancel: function() {
+        this.calenderVisible = false;
       }
     }
   };
+
+  // 查看文件
+  var readFile = {
+    data: function() {
+      return {
+        // 查看文件
+        readTaleDataVisible: false,
+        readTaleColumn: [],
+        readTableData: [],
+
+        readUploadVisible: false
+      }
+    },
+    created: function() {
+      var _this = this;
+      this.readTaleColumn = [
+        { type: 'selection', width: 50 },
+        { label: '文件名称', prop: '' },
+        { label: '信披事项名称', prop: '' },
+        { label: '分工事项名称', prop: '' },
+        { label: '上传人员', prop: '' },
+        { label: '上传时间', prop: '' },
+        { label: '最后修改人', prop: '' },
+        { label: '最后修改时间', prop: '' },
+        { label: '操作', align: 'center', type: 'text', size: 'small', renderCell: function (h, params) {
+          return h('div', {}, [
+            [
+              { label: '下载', class: 'el-icon-download' },
+              { label: '替换', class: 'sc-icon-review-details' },
+              { label: '删除', class: 'el-icon-delete' }
+            ].map(function(elt) {
+              return _this.getTooltipButton(h, params, { label: elt.label, class: elt.class, callbackFunc: function() {
+                _this.readTableOper(elt.label)
+              }});
+            })
+          ]);
+        } },
+
+      ];
+    },
+    methods: {
+      readTableDataCancel: function() {
+        this.readTaleDataVisible = true;
+      },
+      readTableOper: function(type){ // 操作列
+
+      },
+      batchDownload: function() { // 批量下载
+
+      },
+      readTableSave: function() {
+
+      },
+      readTableCancel: function() {
+
+      },
+      readUploadCancel: function() { // 上传文件关闭
+
+      },
+      readUploadSave: function() { // 上传文件保存
+
+      },
+      readUploadPreview: function() {
+
+      }
+    }
+  };
+
+  // 生成文件
+  var createFile = {
+    data: function() {
+      return {
+        createFileVisible: false,
+        createFileColumn: [],
+        createFileForm: {},
+      }
+    },
+    created: function() {
+      var _this = this;
+      this.createFileColumn = [
+        { label: '编号', prop: 'code', render: function(h, params) {
+          return _this.getRenderInput(h, params);
+        } },
+        { label: '内容编辑', prop: 'contentEdit', type: 'textarea', render: function(h, params) {
+          return _this.getRenderInput(h, params);
+        } },
+        { label: '日期', prop: 'date', render: function(h, params) {
+          return _this.getRenderDate(h, params);
+        } }
+      ];
+    },
+    methods: {
+      createFileSave: function() {},
+      createFileCancel: function() {},
+    }
+  };
+
   var todoList = {
     data: function() {
       return {
@@ -162,10 +321,12 @@
         tableHeight: '',
         totalPage: 0,
 
+        tableVisible: false,
+        batchVisible: false,
+
         //上传
         fileList: [],
-        operationFooter: [{ label: '生成文件', type: '' }]
-
+        operationFooter: [{ label: '生成文件', type: '' }],
       }
     },
     mounted: function() {
@@ -190,11 +351,11 @@
         }
         },
         {
-          width: '120px', type: 'operation', align: 'right', render: function (h) {
+          width: '160px', type: 'operation', align: 'right', render: function (h) {
           return h('div', [
             h('ElButton', {
               props: {
-                type: 'primary'
+                type: 'query'
               },
               on: {
                 click: function() {
@@ -204,7 +365,7 @@
             }, '查询'),
             h('ElButton', {
               props: {
-                type: 'primary'
+                type: 'reset'
               },
               on: {
                 click: function() {
@@ -229,9 +390,10 @@
         { label: '操作', align: 'center', type: 'text', size: 'small', renderCell: function (h, params) {
           return h('div', {}, [
             [
-              { label: '查看', class: 'el-icon-edit' },
-              { label: '修改', class: 'el-icon-document' },
-              { label: '删除', class: 'el-icon-delete' },
+              { label: '操作', class: 'el-icon-edit' },
+              { label: '查看文件', class: 'el-icon-document' },
+              { label: '查看流程', class: 'el-icon-time' },
+              { label: '下载', class: 'el-icon-download' }
             ].map(function(elt) {
               return _this.getTooltipButton(h, params, { label: elt.label, class: elt.class, callbackFunc: function() {
                 _this.handleOperation(elt.label)
@@ -239,11 +401,11 @@
             })
           ]);
         } },
-      ]
+      ];
     },
     methods: {
       tableCancel: function() {
-        this.calenderVisible = false;
+        this.tableVisible = false;
       },
       handleSelection: function(selection) {
 
@@ -252,6 +414,7 @@
       handleOperation: function(type) {
         switch (type) {
           case '查看':
+            this.tableVisible = true;
             break;
           case '修改':
             break;
@@ -259,13 +422,24 @@
             break;
         }
       },
-      CreateFile: function() {
+      createFile: function() {
 
       },
       Confirm: function() {
 
       },
       handlePreview: function(fileList) {
+
+      },
+      // 批量操作
+      batchOperation: function() {
+        this.batchVisible = true;
+      },
+      batchCancel: function() {
+        this.batchVisible = false;
+      },
+      // 批量操作保存
+      batchSave: function() {
 
       }
     },
@@ -274,8 +448,38 @@
     },
   };
 
+  var techProcess = {
+    data: function() {
+      return  {
+        techProcessVisible: false,
+        techProcessColumn: [],
+        techProcessData: []
+      }
+    },
+    created: function() {
+      this.techProcessColumn = [
+        { label: '序号', type: 'index', width: 50 },
+        { label: '信披事项名称', prop: '' },
+        { label: '分工事项名称', prop: '' },
+        { label: '主责任部门', prop: '' },
+        { label: '主责任岗位', prop: '' },
+        { label: '责任人', prop: '' },
+        { label: '实际操作人', prop: '' },
+        { label: '实际操作时间', prop: '' },
+        { label: '驳回原因', prop: '' },
+        { label: '建议意见', prop: '' },
+        { label: '流程状态', prop: '' }
+      ]
+    },
+    methods: {
+      techProcessCancel: function() {
+
+      }
+    }
+  }
+
   new Vue({
-    mixins: [publicComponents, todoList, calendar, publicMethod],
+    mixins: [publicComponents, todoList, calendar, publicMethod, readFile, createFile, techProcess],
     el: "#app",
     data: {
       activeName: 'first',
