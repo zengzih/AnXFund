@@ -63,8 +63,59 @@ InitPublicProperty.prototype.mutations = {
     this.orderPageQuery[gobal.pagination.rows] = this.pageSize;
     this.queryConditions[gobal.pagination.rows] = this.pageSize;
     this.commit('getTableData', this.orderPageQuery);
+  },
+  // 表单
+  onSubmit: function(opt) {
+    opt = opt || {};
+    if (!this.formRef && !opt.formRef) {
+      throw '缺失formName';
+    }
+    this.vm.$refs[this.formRef || opt.formRef].validate(function(valid) {
+      if (valid) {
+        this.commit('formSubmit', opt);
+      } else {
+        return false;
+      }
+    }.bind(this))
+  },
+
+  formSubmit: function(opt) {
+    opt = opt || {};
+    var strUrl = opt.formUrl || this.vm.urls ? this.vm.urls[this.currentState] : '';
+    request.post(this, strUrl, opt.formData || this.formData, function(data) {
+      if(data.success) this[opt.dialogName || 'dialogFormVisible'] = false;
+      gobal.messageShow(this.vm, data);
+      this.commit('getTableData');
+    }.bind(this));
+  },
+  getFormData: function(opt) {
+    var opt = opt || {};
+    var url = opt.url ? opt.url : (this.vm ? this.vm.urls.form : '');
+    if (!url) return;
+    request.post(this, url, opt.data || {}, function(data) {
+      var formData = opt.formData ? opt.formData : this.formData;
+      formData = data;
+      this.commit('setFormPropert', opt.state);
+    }.bind(this));
+  },
+  setFormPropert: function(state) {
+    var isDisabled = this.currentState === 'red';
+    state = state || this.currentState || {};
+    Object.keys(state).forEach(function(key) {
+      if (key !== 'editKeys') {
+        if (state.editKeys) {
+          if (state.editKeys.indexOf(key) !== -1) {
+            state[key] = isDisabled;
+          }
+        } else {
+          state[key] = isDisabled;
+        }
+      }
+    });
   }
 };
+
+
 var publicComponents = {
   components: {
     VRender: {
@@ -155,6 +206,9 @@ var publicComponents = {
       },
       render: function (h, ctx) {
         var self = this.$parent;
+        while (self.$parent !== undefined) {
+          self = self.$parent;
+        }
         var _this = this;
         var column = this.column === undefined ? self.column : this.column;
         return h('ElTable', {
@@ -795,11 +849,11 @@ var publicComponents = {
             }
           }
         }
-      }, [
+      }, options.class ? [
         h('i', {
           class: options.class
         })
-      ]);
+      ] : options.label);
     },
     getRenderInput: function (h, params) {
       var row = params.row;
@@ -951,6 +1005,56 @@ var publicComponents = {
           class: 'el-upload__tip'
         }, (col.tipMsg instanceof Function) ? col.tipMsg() : col.tipMsg)
       ])
+    },
+    getRenderScSelectTree: function(h, params) {
+      var row = params.row;
+      var col = params.column;
+      var index = params.index;
+      var option = this.dataSource[col.dataName] || [];
+      if (col.sourceParam) { // 关联下拉
+        if (col.sourceParam.data instanceof Array) {
+          option = col.sourceParam.data;
+        } else {
+          option = this.dataSource[row[col.sourceParam.name] + col.sourceParam.joinEnd] || [];
+        }
+      }
+      return h('ScSelectTree', {
+        props: {
+          disabled: row[col.disabled],
+          data: option,
+          value: row[col.prop],
+          filterable: col.filterable,
+          placeholder: col.placeholder,
+          defaultExpandAll: col.defaultExpandAll,
+          defaultCheckAll: col.defaultCheckAll,
+          showPopover: col.showPopover,
+          popoverWidth: col.popoverWidth,
+          clearable: col.clearable !== undefined ? col.clearable : true,
+          showCheckbox: col.showCheckbox !== undefined ? col.showCheckbox : true,
+          defaultProps: col.defaultProps,
+          defaultExpandedKeys: col.defaultExpandedKeys
+        },
+        on: {
+          change: function(node, allnode) {
+            col.change && col.change(node, allnode)
+          },
+          'visible-change': function(bool) {
+            col.visibleChange && col.visibleChange(bool);
+          },
+          clear: function() {
+            col.clear && col.clear();
+          },
+          'check-change': function(thisNode, thisNodeParent, allCheckNode, node) {
+            col.checkChange && col.checkChange(thisNode, thisNodeParent, allCheckNode, node);
+          },
+          'node-expand': function(node) {
+            col.nodeExpand && col.nodeExpand(node);
+          },
+          'node-collapse': function(node) {
+            col.nodeCollapse && col.nodeCollapse(node);
+          }
+        }
+      })
     }
   }
 };

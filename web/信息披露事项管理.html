@@ -17,6 +17,9 @@
   <script src="./util/publicComponents.js"></script>
   <script src="./util/gobal.js"></script>
   <style>
+    html,body {
+      height: 100%;
+    }
     .sc-skin1 .el-tabs__item {
       width: auto;
     }
@@ -58,7 +61,7 @@
 
       <div class="table">
         <sc-table-config :config="config" @applyconfig="applyconfig" ref="tableConfig"></sc-table-config>
-        <v-table :column="firstTableColumn" @openconfigtable="openconfigtable" :data="firstTableData"
+        <v-table :column="firstTableColumn" @openconfigtable="openConfigTable" :data="firstTableData"
                  :config-columns="configColumns" :show-config-table="true" :height="firstTableHeight"></v-table>
         <v-pagination
           class-name="first-sc-box-content"
@@ -72,11 +75,11 @@
 
       <div class="form">
         <el-dialog :title="firstFormTitle" v-model="firstFormVisible" class="sc-large" :close-on-click-modal="false" @close="firstFormCancel">
-          <el-form :mode="firstFormData">
+          <el-form :model="firstFormData" ref="firstForm">
             <sc-form-layout label-width="large">
-              <sc-form-layout-row v-for="row in firstFormColumn">
+              <sc-form-layout-row v-for="row in getFirstFormColumn">
                 <sc-form-layout-col v-for="col in row" :colspan="col.colSpan">
-                  <el-form-item :label="col.label" :rules="col.rules">
+                  <el-form-item :label="col.label" :rules="col.rules" :prop="col.prop">
                     <v-render :column="col" :row="firstFormData" :render="col.render"></v-render>
                   </el-form-item>
                 </sc-form-layout-col>
@@ -85,8 +88,8 @@
           </el-form>
           <div slot="footer">
             <el-button type="save" @click="getVDescriptionData">变量说明</el-button>
-            <el-button type="save">保存</el-button>
-            <el-button type="cancel">取消</el-button>
+            <el-button type="save" @click="firstFormSave">保存</el-button>
+            <el-button type="cancel" @click="firstFormCancel">取消</el-button>
           </div>
         </el-dialog>
       </div>
@@ -94,6 +97,39 @@
     </el-tab-pane>
 
     <el-tab-pane label="分工事项设置" name="second">
+      <div class="second-sc-box-content">
+        <el-form :model="secondQuery" class="border bgcolor padding ymargin ad-query sc-box-content sc-box-content-adquery">
+          <sc-form-layout label-width="small">
+            <sc-form-layout-row>
+              <sc-form-layout-col>
+                <el-button type="add" @click="secondAdd">新增</el-button>
+                <el-button type="copy" @click="secondCopy">复制</el-button>
+                <el-button type="export" @click="secondExport">导出</el-button>
+              </sc-form-layout-col>
+            </sc-form-layout-row>
+            <sc-form-layout-row v-for="row in secondLayout">
+              <sc-form-layout-col v-for="col in row" :align="col.align">
+                <el-form-item :label="col.label">
+                  <v-render :row="secondQuery" :column="col" :render="col.render"></v-render>
+                </el-form-item>
+              </sc-form-layout-col>
+            </sc-form-layout-row>
+          </sc-form-layout>
+        </el-form>
+      </div>
+
+      <div class="table">
+        <v-table :column="secondTableColumn" :data="secondTableData" :height="secondHeight"></v-table>
+      </div>
+
+      <v-pagination
+        class-name="second-sc-box-content"
+        :target="secondPagination"
+        :current-page="secondPagination.currentPage"
+        :page-size="secondPagination.pageSize"
+        :page-sizes="secondPagination.pageSizes"
+        :total-page="secondPagination.totalPage"
+      ></v-pagination>
 
     </el-tab-pane>
 
@@ -114,7 +150,22 @@
     </div>
   </el-dialog>
 
-
+  <!-- 授权 权限设置 -->
+  <el-dialog title="权限设置" v-model="authorVisible" class="sc-small" :close-on-click-modal="false" @close="authorCancel">
+    <sc-form-layout>
+      <sc-form-layout-row>
+        <sc-form-layout-col>
+          <el-form-item label="选择权限人员">
+            <!--<sc-select-tree :data="authorData" v-model="authority"></sc-select-tree>-->
+          </el-form-item>
+        </sc-form-layout-col>
+      </sc-form-layout-row>
+    </sc-form-layout>
+    <div slot="footer">
+      <el-button type="cancel" @click="authorSave">确定</el-button>
+      <el-button type="cancel" @click="authorCancel">取消</el-button>
+    </div>
+  </el-dialog>
 
 </div>
 </body>
@@ -144,13 +195,17 @@
         firstPageSizes: [], // 每页显示个数选择器的选项设置
         firstOrderPageQuery: {}, // 排序与分页的查询条件要与查询区的分开
 
-        // 表单
+      /*----------表单 START----------*/
         firstFormColumn: [],
         firstFormTitle: '新增',
-        firstFormVisible: true,
+        firstFormVisible: false,
+        firstCurrentState: '',
         firstFormData: {
 
         },
+        firstFormState: '', // 表单类型(新增、复制等)
+      /*----------表单 END----------*/
+
         dataSource: { // 数据源
 
         },
@@ -158,8 +213,27 @@
         // 变量说明
         vDescriptionVisible: false,
         vDescriptionColumn: [],
-        vDescriptionTableData: []
+        vDescriptionTableData: [],
 
+      /*-------- 授权 START-------- */
+        authorVisible: false,
+
+
+      }
+    },
+    computed: {
+      getFirstFormColumn: function() {
+        var result = this.firstFormColumn.slice();
+        if (this.firstFormState !== 'add') {
+          result = this.firstFormColumn.filter(function(elt) {
+            return !elt.label !== '关联报表方案'
+          });
+        }
+        var endColumn = utils.transformArr(result.slice(result.length - 4, result.length), 1);
+        console.log(endColumn);
+        result = utils.transformArr(result.slice(0, result.length - 4), 2);
+        [].push.apply(result, endColumn);
+        return result;
       }
     },
     created: function () {
@@ -223,20 +297,20 @@
           label: '操作', align: 'center', type: 'text', fixed: 'right', size: 'small', renderCell: function (h, params) {
           var actions = _this.actions;
           var operation = [
-            {label: actions.edit.text, class: actions.edit.icon},
-            {label: actions.read.text, class: actions.read.icon},
-            {label: actions.copy.text, class: actions.copy.icon},
-            {label: '关联报表方案', class: actions.copy.icon},
+            {label: actions.edit.text, class: actions.edit.icon, type: 'edit'},
+            {label: actions.read.text, class: actions.read.icon, type: 'read'},
+            {label: actions.copy.text, class: actions.copy.icon, type: 'copy'},
+            {label: '关联报表方案', class: actions.copy.icon, type: ''},
             {label: '授权管理', class: actions.copy.icon},
             {label: '分工设置', class: actions.copy.icon},
             {label: '失效', class: actions.copy.icon},
-            {label: actions.del.text, class: actions.del.icon},
+            {label: actions.del.text, class: actions.del.icon, type: 'del'},
           ];
           return h('div', {}, [
             operation.map(function (elt) {
               return _this.getTooltipButton(h, params, {
                 label: elt.label, class: elt.class, effect: 'light', callbackFunc: function () {
-                  _this.handleOperation(elt.label)
+                  _this.handleOperation(elt, params.row)
                 }
               });
             })
@@ -259,175 +333,160 @@
         totalPage: this.firstTotalPage,
         pageSize: this.firstPageSize,
         pageSizes: this.firstPageSizes,
-        tableUrl: ''
+        tableUrl: '',
+        formRef: 'firstForm',
+        formData: this.firstFormData,
+        dialogName: this.firstFormVisible,
+        currentState: this.firstCurrentState
       });
+      this.firstPagination.commit('getTableData');
+
       // 表单
       this.firstFormColumn = [
-        [
-          { label: '信披事项名称', render: function(h, params) {
+          { label: '信披事项名称', prop: '', render: function(h, params) {
             return _this.getRenderInput(h, params);
           } },
-          { label: '信息披露类型', dataName: '', rules: {required: true, message: '信息披露类型必填'}, render: function(h, params) {
+          { label: '信息披露类型', prop: '', dataName: '', showCheckbox: false, rules: {required: true, message: '信息披露类型必填'}, render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-        ],
-        [
-          { label: '信息披露子类型', dataName: '', rules: {required: true, message: '信息披露子类型必填'}, render: function(h, params) {
+          { label: '信息披露子类型', prop: '', dataName: '', showCheckbox: false, rules: {required: true, message: '信息披露子类型必填'}, render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-          { label: '披露方式', rules: {required: true, message: '披露方式类型必填'}, dataName: '', render: function(h, params) {
+          { label: '披露方式', prop: '', rules: {required: true, message: '披露方式类型必填'}, dataName: '', render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-        ],
-        [
-          { label: '信披主体', dataName: '', rules: {required: true, message: '信披主体必填'}, render: function(h, params) {
+          { label: '信披主体', prop: '', showCheckbox: false, dataName: '', rules: {required: true, message: '信披主体必填'}, render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-          { label: '产品生命周期', dataName: '', render: function(h, params) {
-            return _this.getRenderScSelect(h, params);
-          } }
-        ],
-        [
-          { label: '产品类型', dataName: '', render: function(h, params) {
+          { label: '产品生命周期', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-          { label: '信披事项类型', dataName: '', rules: {required: true, message: '信披事项类型必填'}, render: function(h, params) {
-            return _this.getRenderScSelect(h, params);
-          } }
-        ],
-        [
-          { label: '触发频率', dataName: '', render: function(h, params) {
+          { label: '产品类型', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-          { label: '截止日类型', dataName: '', render: function(h, params) {
+          { label: '信披事项类型', prop: '', showCheckbox: false, dataName: '', rules: {required: true, message: '信披事项类型必填'}, render: function(h, params) {
             return _this.getRenderScSelect(h, params);
-          } }
-        ],
-        [
-          { label: '截止日计算天数', render: function(h, params) {
+          } },
+          { label: '触发频率', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
+            return _this.getRenderScSelect(h, params);
+          } },
+          { label: '截止日类型', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
+            return _this.getRenderScSelect(h, params);
+          } },
+          { label: '截止日计算天数', prop: '', type: 'number', placeHolder: '请填入具体数字', render: function(h, params) {
             return _this.getRenderInput(h, params);
           } },
-          { label: '工作日类型', dataName: '', render: function(h, params) {
-            return _this.getRenderScSelect(h, params);
-          } }
-        ],
-        [
-          { label: '提醒开始方式', dataName: '', render: function (h, params) {
+          { label: '工作日类型', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-          { label: '提醒开始计算天数', render: function(h, params) {
-            return _this.getRenderInput(h, params);
-          } }
-        ],
-        [
-          { label: '提醒次数', render: function(h, params) {
+          { label: '提醒开始方式', prop: '', showCheckbox: false, dataName: '', render: function (h, params) {
+            return _this.getRenderScSelect(h, params);
+          } },
+          { label: '提醒开始计算天数', prop: '', type: 'number', placeHolder: '请填入具体数字', render: function(h, params) {
             return _this.getRenderInput(h, params);
           } },
-          { label: '归属部门', dataName: '', rules: { required: true, message: '归属部门必填'}, render: function(h, params) {
-            return _this.getRenderScSelect(h, params);
-          } }
-        ],
-        [
-          { label: '发起部门固定', dataName: '', render: function(h, params) {
-            return _this.getRenderScSelect(h, params);
-          } },
-          { label: '发起部门', dataName: '', render: function(h, params) {
-            return _this.getRenderScSelect(h, params);
-          } }
-        ],
-        [
-          { label: '发起岗位', dataName: '', render: function(h, params) {
-            return _this.getRenderScSelect(h, params);
-          } },
-          { label: '发起人员', dataName: '', render: function(h, params) {
-            return _this.getRenderScSelect(h, params);
-          } },
-        ],
-        [
-          { label: '主责任部门', dataName: '', rules: { required: true, message: '主责任部门必填' }, render: function(h, params) {
+          { label: '提醒次数', prop: '', type: 'number', render: function(h, params) {
             return _this.getRenderInput(h, params);
           } },
-          { label: '主责任岗位', dataName: '', rules: { required: true, message: '主责任岗位必填' }, render: function(h, params) {
+          { label: '归属部门', prop: '', showCheckbox: false, dataName: '', rules: { required: true, message: '归属部门必填'}, render: function(h, params) {
+            return _this.getRenderScSelect(h, params);
+          } },
+          { label: '发起部门固定', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
+            return _this.getRenderScSelect(h, params);
+          } },
+          { label: '发起部门', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
+            return _this.getRenderScSelect(h, params);
+          } },
+          { label: '发起岗位', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
+            return _this.getRenderScSelect(h, params);
+          } },
+          { label: '发起人员', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
+            return _this.getRenderScSelect(h, params);
+          } },
+          { label: '主责任部门', prop: '', showCheckbox: false, dataName: '', rules: { required: true, message: '主责任部门必填' }, render: function(h, params) {
             return _this.getRenderInput(h, params);
           } },
-        ],
-        [
-          { label: '主责人员', dataName: '', rules: { required: true, message: '主责人员必填' }, render: function(h, params) {
+          { label: '主责任岗位', prop: '', showCheckbox: false, dataName: '', rules: { required: true, message: '主责任岗位必填' }, render: function(h, params) {
             return _this.getRenderInput(h, params);
           } },
-          { label: '支持自动生成', dataName: '', rules: { required: true, message: '支持自动生成必填' }, render: function(h, params) {
+          { label: '主责人员', prop: '', showCheckbox: false, dataName: '', rules: { required: true, message: '主责人员必填' }, render: function(h, params) {
+            return _this.getRenderInput(h, params);
+          } },
+          { label: '支持自动生成', prop: '', showCheckbox: false, dataName: '', rules: { required: true, message: '支持自动生成必填' }, render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-        ],
-        [
-          { label: '第三方复核', dataName: '', rules: { required: true, message: '第三方复核必填' }, render: function(h, params) {
+          { label: '第三方复核', prop: '', showCheckbox: false, dataName: '', rules: { required: true, message: '第三方复核必填' }, render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-          { label: '复核机构', dataName: '', render: function(h, params) {
+          { label: '复核机构', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-        ],
-        [
-          { label: '生效日期', render: function(h, params) {
+          { label: '生效日期', prop: '', render: function(h, params) {
             return _this.getRenderDate(h, params);
           } },
-          { label: '失效日期', render: function(h, params) {
+          { label: '失效日期', prop: '', render: function(h, params) {
             return _this.getRenderDate(h, params);
-          } }
-        ],
-        [
-          { label: '报送平台', dataName: '', render: function(h, params) {
+          } },
+          { label: '报送平台', prop: '', dataName: '', render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-          { label: '备案平台', dataName: '', render: function(h, params) {
-            return _this.getRenderScSelect(h, params);
-          } }
-        ],
-        [
-          { label: '发起OA签报', dataName: '', rules: { required: true, message: '发起QA签报必填' }, render: function(h, params) {
+          { label: '要备案', prop: '', showCheckbox: false, dataName: '', render: function(h, params) {
             return _this.getRenderScSelect(h, params);
           } },
-          { label: 'OA签报流程编号', render: function(h, params) {
-            return _this.getRenderInput(h, params);
-          } }
-        ],
-        [
-          { label: '流程名称', render: function(h, params) {
+          { label: '备案平台', prop: '', dataName: '', render: function(h, params) {
+            return _this.getRenderScSelect(h, params);
+          } },
+          { label: '发起OA签报', prop: '', showCheckbox: false, dataName: '', rules: { required: true, message: '发起QA签报必填' }, render: function(h, params) {
+            return _this.getRenderScSelect(h, params);
+          } },
+          { label: 'OA签报流程编号', prop: '', render: function(h, params) {
             return _this.getRenderInput(h, params);
           } },
-          { label: '公报模板', class: 'template_upload', tipMsg: function() {
+          { label: '流程名称', prop: '', render: function(h, params) {
+            return _this.getRenderInput(h, params);
+          } },
+          { label: '公报模板', prop: '', class: 'template_upload', tipMsg: function() {
             var h = _this.$createElement;
             return [h('span', {
               domProps: {
                 innerHTML: '只能上传 <b style="color: red">.docx</b> 格式'
               }
             })];
-            // '只能上传.docx格式'
-          }, render: function(h, params) {
-            return _this.getRenderUpload(h, params);
-          } }
-        ],
-        [
-          { label: '填报字段说明', type: 'textarea', placeholder: '输入文字可超过4000字符', colSpan: 2, render: function(h, params) {
+          },
+            beforeUpload: function(file) {
+              var type = file.name.substr(file.name.lastIndexOf('.'), file.name.length);
+              if (type !== '.docx') {
+                gobal.messageShow(_this, {msg: '文件格式不正确', code: 2});
+                return false;
+              } else {
+                return true;
+              }
+            },
+            render: function(h, params) {
+              return _this.getRenderUpload(h, params);
+          } },
+          {
+            label: '关联报表方案', prop: '', dataName: '', showCheckbox: false, render: function (h, params) {
+            return _this.getRenderScSelectTree(h, params);
+          } },
+          { label: '填报字段说明', prop: '', type: 'textarea', placeholder: '输入文字可超过4000字符', colSpan: 2, render: function(h, params) {
+            return _this.getRenderInput(h, params);
+          } },
+          { label: '法律法规/报送指引', prop: '', type: 'textarea', placeholder: '输入文字可超过4000字符', colSpan: 2, render: function(h, params) {
+            return _this.getRenderInput(h, params);
+          } },
+          { label: '报送原因', prop: '', type: 'textarea', placeholder: '输入文字可超过4000字符', colSpan: 2, render: function(h, params) {
+            return _this.getRenderInput(h, params);
+          } },
+          { label: '备注', prop: '', type: 'textarea', placeholder: '输入文字可超过4000字符', colSpan: 2, render: function(h, params) {
             return _this.getRenderInput(h, params);
           } }
-        ],
-        [
-          { label: '法律法规/报送指引', type: 'textarea', placeholder: '输入文字可超过4000字符', colSpan: 2, render: function(h, params) {
-            return _this.getRenderInput(h, params);
-          } }
-        ],
-        [
-          { label: '报送原因', type: 'textarea', placeholder: '输入文字可超过4000字符', colSpan: 2, render: function(h, params) {
-            return _this.getRenderInput(h, params);
-          } }
-        ],
-        [
-          { label: '备注', type: 'textarea', placeholder: '输入文字可超过4000字符', colSpan: 2, render: function(h, params) {
-            return _this.getRenderInput(h, params);
-          } }
-        ]
-      ]
+      ];
+      this.firstFormColumn.forEach(function(elt) {
+        // this.firstFormData[elt.prop] = '';
+      }.bind(this));
+      this.firstFormData = Object.assign({}, this.firstFormData);
+
       // 变量说明
       this.vDescriptionColumn = [
         { label: '变量', prop: 'variable', minWidth: 120, align: 'center' },
@@ -450,7 +509,9 @@
       },
       // 新增
       firstAddEvent: function () {
-
+        this.firstFormTitle = '新增';
+        this.firstFormState = 'add';
+        this.firstCurrentState = 'add';
       },
       // 批量审核
       firstBatchAudit: function () {
@@ -460,7 +521,29 @@
       firstAntiAudit: function () {
 
       },
-      openconfigtable: function () {
+      // 表格选中事件
+      handleSelection: function(selection) {
+
+      },
+      // 操作列
+      handleOperation: function(item, row) {
+        this.firstFormTitle = item.label;
+        this.firstFormState = item.type;
+        switch (item.type) {
+          case 'read':
+            this.firstCurrentState = 'read';
+            this.firstPagination.commit('getFormData', { data: { id: row.id } });
+            this.firstFormVisible = true;
+            break;
+          case 'edit':
+            this.firstCurrentState = 'edit';
+            this.firstPagination.commit('getFormData', { data: { id: row.id } });
+            this.firstFormVisible = true;
+            break;
+
+        }
+      },
+      openConfigTable: function () {
         this.$refs.tableConfig.openDialog();
         /*var _this = this;
         request.post(_this, _this.urls.getOriginDatas, {
@@ -479,14 +562,29 @@
       applyconfig: function (column) {
         this.configColumns = column;
       },
-      /*--------------表单----------------*/
+    /*--------------主表单----------------*/
       firstFormCancel: function() {
-
+        this.firstFormVisible = false;
       },
+      firstFormSave: function() {
+        this.firstPagination.commit('onSubmit');
+      },
+
+    /*--------------主表单 END ----------------*/
+
       getVDescriptionData: function() {
         // 获取变量说明数据
         this.vDescriptionVisible = true;
-      }
+      },
+
+    /*-----------权限 START------------*/
+      authorSave: function() {
+
+      },
+      authorCancel: function() {
+        this.authorVisible = false
+      },
+    /*-----------权限 END------------*/
 
     },
     updated: function () {
@@ -494,13 +592,153 @@
     }
   };
 
+  var secondMixins = {
+    data: function() {
+      return {
+        secondFormData: {
+
+        },
+        secondQuery: {
+
+        },
+        secondPagination: null,
+        secondLayout: [],
+
+        secondHeight: '',
+        secondTableColumn: [],
+        secondTableData: [],
+
+        /*-------分页------------*/
+        secondTotal: 0, // 总条数
+        secondCurrentPage: 1, // 当前页码
+        secondTotalPage: 0, // 总页码
+        secondPageSize: 0, // 每页显示条目个数
+        secondPageSizes: [], // 每页显示个数选择器的选项设置
+        secondOrderPageQuery: {}, // 排序与分页的查询条件要与查询区的分开
+
+        /*----------表单---------------*/
+        secondFormVisible: false,
+        secondCurrentState: ''
+      }
+    },
+    mounted: function() {
+      gobal.getTableHeight(this, "second-sc-box-content", 44, 'secondHeight');
+    },
+    created: function() {
+      var _this = this;
+      this.secondLayout = [
+        [
+          { label: '关键词', prop: '', placeHolder: '支持模糊搜索', render: function(h, params) {
+            return _this.getRenderInput(h, params);
+          }},
+          { label: '主责任部门', prop: '', dataName: '', showCheckbox: false, render: function(h, params) {
+            return _this.getRenderSelect(h, params);
+          }},
+          { label: '主责任岗位', prop: '', dataName: '', showCheckbox: false, render: function(h, params) {
+            return _this.getRenderSelect(h, params);
+          } },
+          { label: '主责任人', prop: '', dataName: '', showCheckbox: false, render: function(h, params) {
+            return _this.getRenderSelect(h, params);
+          } }
+        ],
+        [
+          { label: '发起人', prop: '', dataName: '', showCheckbox: false, render: function(h, params) {
+            return _this.getRenderSelect(h, params);
+          } },
+          { label: '截止日期', prop: '', render: function(h, params) {
+            return _this.getRenderDate(h, params);
+          } },
+          {},
+          { align: 'right', render: function(h, params) {
+            return h('div',{}, [
+              _this.getRenderButton(h, params, { label: '查询', type: 'query', callbackFunc: function() {
+
+              } }),
+              _this.getRenderButton(h, params, { label: '重置', type: 'reset', callbackFunc: function() {
+
+              } }),
+            ])
+          } }
+        ]
+      ];
+      this.secondTableColumn = [
+        { type: 'selection', width: 50 },
+        { label: '新披事项名称', prop: '' },
+        { label: '分工事项名称', prop: '' },
+        { label: '分工顺序', prop: '' },
+        { label: '主责任部门', prop: '' },
+        { label: '主责任岗位', prop: '' },
+        { label: '主责任人', prop: '' },
+        { label: '发起人', prop: '' },
+        { label: '生成红头文件', prop: '' },
+        {
+          label: '操作', align: 'center', type: 'text', fixed: 'right', size: 'small', renderCell: function (h, params) {
+          var actions = _this.actions;
+          var operation = [
+            {label: actions.edit.text, class: actions.edit.icon, type: 'edit'},
+            {label: actions.read.text, class: actions.read.icon, type: 'read'},
+            {label: actions.del.text, class: actions.del.icon, type: 'del'},
+          ];
+          return h('div', {}, [
+            operation.map(function (elt) {
+              return _this.getTooltipButton(h, params, {
+                label: elt.label, class: elt.class, effect: 'light', callbackFunc: function () {
+                  _this.SecondOperation(elt, params.row)
+                }
+              });
+            })
+          ]);
+        }
+        },
+      ];
+      this.secondPagination = new InitPublicProperty({
+        vm: this,
+        queryConditions: this.secondQuery,
+        currentPage: this.secondCurrentPage,
+        totalPage: this.secondTotalPage,
+        pageSize: this.secondPageSize,
+        pageSizes: this.secondPageSizes,
+        tableUrl: '',
+        formRef: 'secondForm',
+        formData: this.secondFormData,
+        dialogName: this.secondFormVisible,
+        currentState: this.secondCurrentState
+      });
+      this.secondPagination.commit('getTableData');
+    },
+    methods: {
+      secondAdd: function() {
+        this.secondFormVisible = true;
+        this.secondCurrentState = 'add';
+      },
+      secondCopy: function() {
+
+      },
+      secondExport: function() {
+
+      },
+
+      /*---------表格---------*/
+      SecondOperation: function() { // 操作
+
+      },
+
+    },
+    updated: function() {
+      gobal.getTableHeight(this, "second-sc-box-content", 46, 'secondHeight');
+    }
+  };
+
   new Vue({
-    mixins: [publicComponents, firstMixins],
+    mixins: [publicComponents, firstMixins, secondMixins],
     el: '#app',
     data: function () {
       return {
-        activeName: 'first',
-        actions: null
+        activeName: 'second',
+        actions: null,
+        urls: {
+          form: ''
+        }
       }
     },
     created: function () {
