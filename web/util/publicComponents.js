@@ -1,12 +1,12 @@
-var InitPublicProperty = function(opt) {
+var InitPublicProperty = function (opt) {
   opt = opt || {};
   this.orderPageQuery = {};
-  Object.keys(opt).forEach(function(key) {
+  Object.keys(opt).forEach(function (key) {
     this[key] = opt[key];
   }.bind(this));
   this.init();
 };
-InitPublicProperty.prototype.init = function() {
+InitPublicProperty.prototype.init = function () {
   this.pageSize = gobal.pagination.pageSize;
   this.pageSizes = gobal.pagination.pageSizes;
   if (this.queryConditions) {
@@ -19,17 +19,17 @@ InitPublicProperty.prototype.init = function() {
     this.orderPageQuery = utils.myAssign({}, this.orderPageQuery, this.queryConditions); // 查询参数初始化
   }
 };
-InitPublicProperty.prototype.commit = function(name) {
+InitPublicProperty.prototype.commit = function (name) {
   var arg = [].slice.call(arguments, 1);
   if (this.mutations[name]) {
     this.mutations[name].apply(this, arg);
   }
 };
 InitPublicProperty.prototype.mutations = {
-  query: function() {
+  query: function () {
     this.commit('getTableData');
   },
-  reset: function() {
+  reset: function () {
     this.pageSize = gobal.pagination.pageSize;
     this.pageSizes = gobal.pagination.pageSizes;
     this.queryConditions = utils.myAssign({}, this.queryConditions, this.queryInit);
@@ -37,27 +37,41 @@ InitPublicProperty.prototype.mutations = {
     this.currentPage = 1;
     this.commit('getTableData');
   },
-  getTableData: function(queryConditions) {
+  deleteRow: function (opt) { //删
+    opt = opt || {};
+    var _this = this;
+    var para = opt.data || {};
+    var obj = gobal.getComfirmInfo(dictFormState.del);
+    var curUrl = opt.url ? opt.url : utils.isNotEmpty(this.delUrl) ? this.delUrl : (this.vm.urls ? this.vm.urls.del : '');
+    if (!curUrl) return;
+    gobal.openComfirm(this.vm, obj, function () {
+      request.post(_this.vm, curUrl, para, function (data) {
+        gobal.messageShow(_this.vm, data);
+        _this.commit('getTableData');
+      });
+    });
+  },
+  getTableData: function (queryConditions) {
     var _this = this;
     var curUrl = utils.isNotEmpty(this.tableUrl) ? this.tableUrl : (this.vm.urls ? this.vm.urls.table : '');
     var curQueryConditions = utils.isNotEmpty(queryConditions) ? queryConditions : this.queryConditions;
     if (!curUrl) return;
-    request.post(this.vm, curUrl, curQueryConditions, function(data) {
-      this.tableData = data.rows;
+    request.post(this.vm, curUrl, curQueryConditions, function (data) {
+      this.vm[this.tableData] = data.rows;
       this.totalPage = data.total;
-      if(this.vm.$refs['myTable']){
+      if (this.vm.$refs['myTable']) {
         this.vm.$refs['myTable'].resetScroll();
       }
     }.bind(this));
   },
-  currentChange: function(val) {
+  currentChange: function (val) {
     this.currentPage = val;
     this.currentRow = val;
     this.orderPageQuery[gobal.pagination.page] = val;
     this.queryConditions[gobal.pagination.page] = val;
     this.commit('getTableData', this.orderPageQuery);
   },
-  sizeChange: function(val) {
+  sizeChange: function (val) {
     this.pageSize = val;
     this.currentPage = 1;
     this.orderPageQuery[gobal.pagination.rows] = this.pageSize;
@@ -65,12 +79,12 @@ InitPublicProperty.prototype.mutations = {
     this.commit('getTableData', this.orderPageQuery);
   },
   // 表单
-  onSubmit: function(opt) {
+  onSubmit: function (opt) {
     opt = opt || {};
     if (!this.formRef && !opt.formRef) {
       throw '缺失formName';
     }
-    this.vm.$refs[this.formRef || opt.formRef].validate(function(valid) {
+    this.vm.$refs[this.formRef || opt.formRef].validate(function (valid) {
       if (valid) {
         this.commit('formSubmit', opt);
       } else {
@@ -78,30 +92,36 @@ InitPublicProperty.prototype.mutations = {
       }
     }.bind(this))
   },
-
-  formSubmit: function(opt) {
+  formSubmit: function (opt) {
     opt = opt || {};
     var strUrl = opt.formUrl || this.vm.urls ? this.vm.urls[this.currentState] : '';
-    request.post(this, strUrl, opt.formData || this.formData, function(data) {
-      if(data.success) this[opt.dialogName || 'dialogFormVisible'] = false;
+    request.post(this, strUrl, opt.formData || this.formData, function (data) {
+      if (data.success) this[opt.dialogName || 'dialogFormVisible'] = false;
       gobal.messageShow(this.vm, data);
       this.commit('getTableData');
     }.bind(this));
   },
-  getFormData: function(opt) {
+  getFormData: function (opt) {
     var opt = opt || {};
-    var url = opt.url ? opt.url : (this.vm ? this.vm.urls.form : '');
+    this.vm[this.dialogName] = true;
+    var url = opt.url ? opt.url : (this.formUrl ? this.formUrl : (this.vm ? this.vm.urls.form : ''));
     if (!url) return;
-    request.post(this, url, opt.data || {}, function(data) {
-      var formData = opt.formData ? opt.formData : this.formData;
-      formData = data;
-      this.commit('setFormPropert', opt.state);
+    request.post(this.vm, url, opt.data || {}, function (data) {
+      var formData = opt.formData ? opt.formData : this.vm[this.formData];
+      data = data || {};
+      Object.keys(data).forEach(function (key) {
+        if (formData.hasOwnProperty(key)) {
+          formData[key] = data[key];
+        }
+      }.bind(this));
+      this.commit('setFormPropert');
     }.bind(this));
   },
-  setFormPropert: function(state) {
+  setFormPropert: function (state) {
+    debugger;
     var isDisabled = this.currentState === 'red';
     state = state || this.currentState || {};
-    Object.keys(state).forEach(function(key) {
+    Object.keys(state).forEach(function (key) {
       if (key !== 'editKeys') {
         if (state.editKeys) {
           if (state.editKeys.indexOf(key) !== -1) {
@@ -112,6 +132,10 @@ InitPublicProperty.prototype.mutations = {
         }
       }
     });
+  },
+  cancel: function () {
+    this.vm[this.dialogName] = false;
+    this.vm.$refs[this.formRef].resetFields();
   }
 };
 
@@ -150,7 +174,7 @@ var publicComponents = {
         currentPage: [Number, String],
         className: String
       },
-      render: function(h, ctx) {
+      render: function (h, ctx) {
         var _this = ctx.parent;
         return h('ElPagination', {
           class: 'sc-box-content-page ' + (ctx.props.className ? ctx.props.className : 'sc-box-content'),
@@ -162,7 +186,7 @@ var publicComponents = {
             layout: 'total, sizes, prev, pager, next, jumper'
           },
           on: {
-            'current-change': function(val) {
+            'current-change': function (val) {
               if (ctx.props.currentChange) {
                 ctx.props.currentChange(val);
               } else if (ctx.props.target) {
@@ -175,7 +199,7 @@ var publicComponents = {
                 _this.getTableData(_this.orderPageQuery);
               }
             },
-            'size-change': function(val) {
+            'size-change': function (val) {
               if (ctx.props.sizeChange) {
                 ctx.props.sizeChange(val);
               } else if (ctx.props.target) {
@@ -216,7 +240,8 @@ var publicComponents = {
             configColumns: this.configColumns,
             showConfigTable: this.showConfigTable,
             data: this.data === undefined ? self.data : this.data,
-            height: this.height === undefined ? self.tableHeight : this.height
+            height: this.height === undefined ? self.tableHeight : this.height,
+            selectionChange: Function
           },
           on: {
             // 事件
@@ -227,14 +252,16 @@ var publicComponents = {
                 self.onSort(val);
               }
             },
-            'selection-change': function(selection) {
-              if (this.handleSelection) {
+            'selection-change': function (selection) {
+              if (this.selectionChange) {
+                this.selectionChange(selection)
+              } else if (this.handleSelection) {
                 this.handleSelection(selection);
               } else {
                 self.handleSelection(selection);
               }
             },
-            openconfigtable: function() {
+            openconfigtable: function () {
               _this.$emit('openconfigtable');
             }
           }
@@ -250,7 +277,7 @@ var publicComponents = {
               return h('ElTableColumn', {
                 props: colParams,
                 scopedSlots: {
-                  default: function(val) {
+                  default: function (val) {
                     if (elt.renderCell) {
                       return elt.renderCell(h, val);
                     }
@@ -268,11 +295,9 @@ var publicComponents = {
     },
     VLayout: {
       functional: true,
-      props: {
+      props: {},
+      created: function () {
 
-      },
-      created: function() {
-        
       }
     },
     vCalendar: {
@@ -281,7 +306,7 @@ var publicComponents = {
         defaultColumn: {
           type: Array,
           default: function () {
-            return [{ label: '星期一' }, { label: '星期二' }, { label: '星期三' }, { label: '星期四' }, { label: '星期五' }, { label: '星期六' }, { label: '星期日' }]
+            return [{label: '星期一'}, {label: '星期二'}, {label: '星期三'}, {label: '星期四'}, {label: '星期五'}, {label: '星期六'}, {label: '星期日'}]
           }
         },
         year: {
@@ -294,8 +319,8 @@ var publicComponents = {
         },
         weekMode: Boolean
       },
-      data: function() {
-        return  {
+      data: function () {
+        return {
           date: '',
           week: '',
           rowCount: 6, // 要生成的表格的行数
@@ -318,7 +343,7 @@ var publicComponents = {
         }
       },
       watch: {
-        weekMode: function(val) {
+        weekMode: function (val) {
           if (val) {
             var date = new Date();
             this.year = date.getFullYear();
@@ -353,7 +378,7 @@ var publicComponents = {
           return result;
         }
       },
-      created: function() {
+      created: function () {
         var date = new Date();
         this.year = this.year || date.getFullYear();
         this.month = this.month || date.getMonth() + 1;
@@ -361,33 +386,33 @@ var publicComponents = {
           this.handleNextWeek();
         }
       },
-      mounted: function() {
+      mounted: function () {
         this.doLayout();
       },
       methods: {
-        typeOf: function(obj) {
+        typeOf: function (obj) {
           var toString = Object.prototype.toString;
           var map = {
-            '[object Boolean]'  : 'boolean',
-            '[object Number]'   : 'number',
-            '[object String]'   : 'string',
-            '[object Function]' : 'function',
-            '[object Array]'    : 'array',
-            '[object Date]'     : 'date',
-            '[object RegExp]'   : 'regExp',
+            '[object Boolean]': 'boolean',
+            '[object Number]': 'number',
+            '[object String]': 'string',
+            '[object Function]': 'function',
+            '[object Array]': 'array',
+            '[object Date]': 'date',
+            '[object RegExp]': 'regExp',
             '[object Undefined]': 'undefined',
-            '[object Null]'     : 'null',
-            '[object Object]'   : 'object'
+            '[object Null]': 'null',
+            '[object Object]': 'object'
           };
           return map[toString.call(obj)];
         },
-        deepCopy: function(data) {
+        deepCopy: function (data) {
           var t = this.typeOf(data);
           var o;
 
           if (t === 'array') {
             o = [];
-          } else if ( t === 'object') {
+          } else if (t === 'object') {
             o = {};
           } else {
             return data;
@@ -397,37 +422,37 @@ var publicComponents = {
             for (var i = 0; i < data.length; i++) {
               o.push(this.deepCopy(data[i]));
             }
-          } else if ( t === 'object') {
+          } else if (t === 'object') {
             for (var i in data) {
               o[i] = this.deepCopy(data[i]);
             }
           }
           return o;
         },
-        doLayout: function() {
+        doLayout: function () {
           this.calender = this.$refs.calender;
           this.resizeProxy = this.$refs.resizeProxy;
           var bodyWidth = this.calender.offsetWidth;
-          this.column.forEach(function(elt, index) {
+          this.column.forEach(function (elt, index) {
             this.$set(elt, 'className', 'el-table_1_column_' + index);
           }.bind(this));
           // 计算全部的宽度
-          var bodyMinWidth = this.column.reduce(function(prev, col) {
+          var bodyMinWidth = this.column.reduce(function (prev, col) {
             return prev + (col.width || col.minWidth || 80)
           }, 0);
-          var flexColumns = this.column.filter(function(elt) {
+          var flexColumns = this.column.filter(function (elt) {
             return typeof elt.width !== 'number';
           });
           var totalFlexWidth = bodyWidth - bodyMinWidth
           if (flexColumns.length === 1) {
             flexColumns[0].realWidth = (flexColumns[0].minWidth || 80) + totalFlexWidth;
           } else {
-            var flexColumnAllWidth = flexColumns.reduce(function(prev, column) {
+            var flexColumnAllWidth = flexColumns.reduce(function (prev, column) {
               return prev + (column.minWidth || 80)
             }, 0);
             var noneFirstWidth = 0;
             var flexWidthPerPixel = totalFlexWidth / flexColumnAllWidth;
-            flexColumns.forEach(function(column, index) {
+            flexColumns.forEach(function (column, index) {
               if (index === 0) {
                 return;
               }
@@ -487,33 +512,33 @@ var publicComponents = {
               break;
           }
         },
-        getWeekColumn: function(week, details) {
+        getWeekColumn: function (week, details) {
           week = week || {};
           var details = details || this.getDateDetail;
           var obj = {};
-          details.forEach(function(elt, i) {
+          details.forEach(function (elt, i) {
             if (elt.isDefaultDate) {
               obj.defaultIndex = i;
             } else {
-              if (JSON.stringify(elt)== JSON.stringify(week)) {
+              if (JSON.stringify(elt) == JSON.stringify(week)) {
                 obj.weekIndex = i;
               }
             }
           }.bind(this));
           return obj;
         },
-        handlePrevWeek: function() {
+        handlePrevWeek: function () {
           var details = this.getDateDetail;
           var column = this.deepCopy(this.column);
           var thisWeek = column[0] || {};
           var obj = this.getWeekColumn(thisWeek);
-          var index = obj.weekIndex !== undefined ? obj.weekIndex  + 1 : obj.defaultIndex;
+          var index = obj.weekIndex !== undefined ? obj.weekIndex + 1 : obj.defaultIndex;
           if (index < 7) {
             this.month--;
             details = this.getDateDetail.concat(details);
             // 去重
             var unique = {};
-            for(var i = 0; i < details.length; i++){
+            for (var i = 0; i < details.length; i++) {
               if (unique[JSON.stringify(details[i])]) {
                 details.splice(i, 1);
                 i--;
@@ -526,32 +551,32 @@ var publicComponents = {
           }
           this.column = details.slice(index - 7, index);
         },
-        handleNextWeek: function(type) {
+        handleNextWeek: function (type) {
           var details = this.getDateDetail;
-          if (type){
+          if (type) {
             var thisWeek = {};
           } else {
             var thisWeek = this.column[this.column.length - 1] || {};
           }
           var obj = this.getWeekColumn(thisWeek);
-          var index = obj.weekIndex ? obj.weekIndex  + 1 : obj.defaultIndex;
+          var index = obj.weekIndex ? obj.weekIndex + 1 : obj.defaultIndex;
           var column = details.slice(index, index + 7);
-          this.column = this.getWeekLength({ column: column, type: 'next', detail: details, index: index });
+          this.column = this.getWeekLength({column: column, type: 'next', detail: details, index: index});
         },
         // 判断当前月份是否够，不够要用下个月份补齐
-        getWeekLength: function(opt) {
+        getWeekLength: function (opt) {
           var details = opt.detail;
-          if (opt.type === 'next'){
-            if (opt.column.length!== 0 && opt.column.length < 7) {
+          if (opt.type === 'next') {
+            if (opt.column.length !== 0 && opt.column.length < 7) {
               if (this.month == 12) {
                 this.month = 1;
                 this.year++;
               } else {
                 this.month++;
               }
-              details  = details.concat(this.getDateDetail);
+              details = details.concat(this.getDateDetail);
               var unique = {};
-              for(var i = 0; i < details.length; i++){
+              for (var i = 0; i < details.length; i++) {
                 if (unique[JSON.stringify(details[i])]) {
                   details.splice(i, 1);
                   i--;
@@ -570,17 +595,17 @@ var publicComponents = {
               } else {
                 this.month--;
               }
-              details  = this.getDateDetail.concat(details);
+              details = this.getDateDetail.concat(details);
             }
             return details.slice(opt.index - 7, opt.index);
           }
         },
-        handleMousemove: function(e, col) {
+        handleMousemove: function (e, col) {
           var target = e.target;
           while (target && target.tagName !== 'TH') {
             target = target.parentNode;
           }
-          if(!this.dragging) {
+          if (!this.dragging) {
             var bodyStyle = document.body.style;
             var rect = target.getBoundingClientRect();
             if (rect.width > 12 && rect.right - event.pageX < 8) {
@@ -592,15 +617,15 @@ var publicComponents = {
             }
           }
         },
-        handleMouseout: function() {
+        handleMouseout: function () {
           document.body.style.cursor = '';
         },
-        handleMousedown: function(event, column) {
+        handleMousedown: function (event, column) {
           var _this = this;
           if (this.draggingColumn) {
             var table = this.createEl;
             this.resizeProxy.style.display = 'block';
-            const columnEl  = this.$el.querySelector(`th.${column.className}`);
+            const columnEl = this.$el.querySelector(`th.${column.className}`);
             // tableHeaderWrapper
             var tableLeft = this.calender.getBoundingClientRect().left;
             var columnRect = columnEl.getBoundingClientRect();
@@ -612,14 +637,18 @@ var publicComponents = {
               tableLeft: tableLeft
             };
             this.resizeProxy.style.left = this.dragState.startLeft + 'px';
-            document.onselectstart = function () { return false; };
-            document.ondragstart = function () { return false; };
-            var handleMouseMove = function(event) {
+            document.onselectstart = function () {
+              return false;
+            };
+            document.ondragstart = function () {
+              return false;
+            };
+            var handleMouseMove = function (event) {
               var deltaLeft = event.clientX - _this.dragState.startMouseLeft;
               var proxyLeft = _this.dragState.startLeft + deltaLeft;
               _this.resizeProxy.style.left = Math.max(minLeft, proxyLeft) + 'px';
             };
-            var handleMouseUp = function() {
+            var handleMouseUp = function () {
               var startColumnLeft = _this.dragState.startColumnLeft;
               var finalLeft = parseInt(_this.resizeProxy.style.left, 10);
               var columnWidth = finalLeft - startColumnLeft;
@@ -665,7 +694,7 @@ var publicComponents = {
         var getMonthInner = function (week, day, col) {
           var h = this.$createElement;
           if (_this.weekMode) {
-            return h('div', { class: 'week_mode_content' }, 'content')
+            return h('div', {class: 'week_mode_content'}, 'content')
           } else {
             var index = week * 7 + day;
             var detail = this.getDateDetail[index];
@@ -688,7 +717,7 @@ var publicComponents = {
         };
         var getCalendarHeader = function (detail) {
           if (_this.weekMode) {
-            return detail.year + '-' + detail.month + '-' + detail.day + '  ' + (detail.week !== 0 ?  _this.defaultColumn[detail.week - 1].label : _this.defaultColumn[_this.defaultColumn.length - 1].label);
+            return detail.year + '-' + detail.month + '-' + detail.day + '  ' + (detail.week !== 0 ? _this.defaultColumn[detail.week - 1].label : _this.defaultColumn[_this.defaultColumn.length - 1].label);
           } else {
             return detail.label;
           }
@@ -719,11 +748,14 @@ var publicComponents = {
             })
           ])
         };
-        if (!this.weekMode){
+        if (!this.weekMode) {
           this.column = this.defaultColumn;
         }
         var column = this.column;
-        return h('div', {class: 'calendar_wrapper'+(this.weekMode ? ' week_mode_calender' : '')+'', ref: 'calender'}, [
+        return h('div', {
+          class: 'calendar_wrapper' + (this.weekMode ? ' week_mode_calender' : '') + '',
+          ref: 'calender'
+        }, [
           h('div', {class: 'calendar_header'}, [
             h('div', {class: 'calendar_slot'}, this.$slots.default),
             h('div', {class: 'calendar_render-info'}, [
@@ -776,8 +808,8 @@ var publicComponents = {
                     border: '0'
                   }
                 }, [
-                  h('colgroup',{}, [
-                    column.map(function(col) {
+                  h('colgroup', {}, [
+                    column.map(function (col) {
                       return h('col', {
                         style: {
                           width: (col.width || col.realWidth) + 'px'
@@ -794,13 +826,13 @@ var publicComponents = {
                             textAlign: 'center'
                           },
                           on: {
-                            mousemove: function(event) {
+                            mousemove: function (event) {
                               _this.handleMousemove(event, elt);
                             },
-                            mouseout: function(event) {
+                            mouseout: function (event) {
                               _this.handleMouseout(event);
                             },
-                            mousedown: function(event) {
+                            mousedown: function (event) {
                               _this.handleMousedown(event, elt);
                             }
                           }
@@ -817,7 +849,7 @@ var publicComponents = {
     },
   },
   methods: {
-    getTooltipButton: function(h, params, options) {
+    getTooltipButton: function (h, params, options) {
       var col = params.column;
       return h('ElTooltip', {
         props: {
@@ -870,7 +902,8 @@ var publicComponents = {
           input: function (val) {
             row[col.prop] = val;
           }
-        }
+        },
+        slot: col.slot
       });
     },
     getRenderIndex: function (h, params) {
@@ -882,7 +915,7 @@ var publicComponents = {
       var index = params.index;
       var option = this.dataSource[col.dataName] || []; // dataName表示数据源的名字
       if (col.sourceParam) { // 关联下拉时使用
-        if(col.sourceParam.data instanceof Array) {
+        if (col.sourceParam.data instanceof Array) {
           option = col.sourceParam.data; // 直接在sourceParam中定义的数据源
         } else {
           // 因为vue规定不能直接在this中给data添加或修改属性，所以需要一个dataSource，将数据放入dataSource
@@ -920,7 +953,7 @@ var publicComponents = {
         })
       ]);
     },
-    getRenderDate: function(h, params) {
+    getRenderDate: function (h, params) {
       var row = params.row;
       var col = params.column;
       return h('ElDatePicker', {
@@ -931,7 +964,7 @@ var publicComponents = {
           placeholder: col.type == 'dateTime' ? '请选择时间' : '请选择日期'
         },
         on: {
-          input: function(val) {
+          input: function (val) {
             row[col.prop] = val;
           },
           change: function (val) {
@@ -940,7 +973,7 @@ var publicComponents = {
         }
       })
     },
-    getRenderScSelect: function(h, params) {
+    getRenderScSelect: function (h, params) {
       var row = params.row;
       var col = params.column;
       var index = params.index;
@@ -963,13 +996,13 @@ var publicComponents = {
           defaultProps: col.defaultProps
         },
         on: {
-          input: function(val) {
+          input: function (val) {
             row[col.prop] = val;
           }
         }
       })
     },
-    getRenderUpload: function(h, params) {
+    getRenderUpload: function (h, params) {
       var row = params.row;
       var col = params.column;
       var index = params.index;
@@ -987,17 +1020,22 @@ var publicComponents = {
         },
         class: col.class,
         on: {
-          onChange: function () {},
-          onPreview: function(){},
-          onRemove: function () {},
-          onSuccess: function() {},
-          beforeUpload: function() {},
+          onChange: function () {
+          },
+          onPreview: function () {
+          },
+          onRemove: function () {
+          },
+          onSuccess: function () {
+          },
+          beforeUpload: function () {
+          },
         }
       }, [
         h('ElButton', {
           props: {
             size: 'small',
-            type: 'primary'
+            type: col.type || 'primary'
           }
         }, '点击上传'),
         h('div', {
@@ -1006,7 +1044,7 @@ var publicComponents = {
         }, (col.tipMsg instanceof Function) ? col.tipMsg() : col.tipMsg)
       ])
     },
-    getRenderScSelectTree: function(h, params) {
+    getRenderScSelectTree: function (h, params) {
       var row = params.row;
       var col = params.column;
       var index = params.index;
@@ -1035,22 +1073,22 @@ var publicComponents = {
           defaultExpandedKeys: col.defaultExpandedKeys
         },
         on: {
-          change: function(node, allnode) {
+          change: function (node, allnode) {
             col.change && col.change(node, allnode)
           },
-          'visible-change': function(bool) {
+          'visible-change': function (bool) {
             col.visibleChange && col.visibleChange(bool);
           },
-          clear: function() {
+          clear: function () {
             col.clear && col.clear();
           },
-          'check-change': function(thisNode, thisNodeParent, allCheckNode, node) {
+          'check-change': function (thisNode, thisNodeParent, allCheckNode, node) {
             col.checkChange && col.checkChange(thisNode, thisNodeParent, allCheckNode, node);
           },
-          'node-expand': function(node) {
+          'node-expand': function (node) {
             col.nodeExpand && col.nodeExpand(node);
           },
-          'node-collapse': function(node) {
+          'node-collapse': function (node) {
             col.nodeCollapse && col.nodeCollapse(node);
           }
         }
@@ -1059,7 +1097,7 @@ var publicComponents = {
   }
 };
 var publicMethod = {
-  data: function() {
+  data: function () {
     return {
       queryInit: {},
       currentPage: 1,
@@ -1070,7 +1108,7 @@ var publicMethod = {
       currentState: ''
     }
   },
-  created: function() {
+  created: function () {
     $("body").addClass("sc-skin1");
     this.pageSize = gobal.pagination.pageSize;
     this.pageSizes = gobal.pagination.pageSizes;
@@ -1085,33 +1123,33 @@ var publicMethod = {
     this.actions = gobal.getActions();
   },
   methods: {
-    getTableData: function(url, queryConditions) {
+    getTableData: function (url, queryConditions) {
       var _this = this;
       var curUrl = utils.isNotEmpty(url) ? url : this.urls.table;
       var curQueryConditions = utils.isNotEmpty(queryConditions) ? queryConditions : this.queryConditions;
-      request.post(this, curUrl, curQueryConditions, function(data) {
+      request.post(this, curUrl, curQueryConditions, function (data) {
         _this.tableData = data.rows;
-        if(_this.$refs['myTable']){
+        if (_this.$refs['myTable']) {
           _this.$refs['myTable'].resetScroll();
         }
       });
     },
 
-    onQuery: function() {
+    onQuery: function () {
       this.getTableData && this.getTableData();
     },
 
-    onReset: function() {
+    onReset: function () {
       this.queryConditions = utils.myAssign({}, this.queryConditions, this.queryInit);
       this.getTableData && this.getTableData();
     },
 
-    onSubmit: function(opt) {
+    onSubmit: function (opt) {
       opt = opt || {};
       if (!opt.formName) {
         throw '缺失formName';
       }
-      this.$refs[opt.formName].validate(function(valid) {
+      this.$refs[opt.formName].validate(function (valid) {
         if (valid) {
           this.formSubmit();
         } else {
@@ -1120,35 +1158,35 @@ var publicMethod = {
       }.bind(this))
     },
 
-    formSubmit: function(opt) {
+    formSubmit: function (opt) {
       opt = opt || {};
       var strUrl = opt.url || this.urls[this.currentState];
-      request.post(this, strUrl, opt.formData || this.formData, function(data) {
-        if(data.success) this[opt.dialogName || 'dialogFormVisible'] = false;
+      request.post(this, strUrl, opt.formData || this.formData, function (data) {
+        if (data.success) this[opt.dialogName || 'dialogFormVisible'] = false;
         gobal.messageShow(this, data);
         this.getTableData();
       }.bind(this));
     },
 
-    setFormState: function(mode) {
+    setFormState: function (mode) {
       var vState = false;
       var vKeyStr = "";
       this.currentState = mode;
-      if(mode == dictFormState.read) vState = true;
-      if(mode == dictFormState.edit) vKeyStr = this.state.editKeys;
-      for(var key in this.state) {
-        if(key != "editKeys") {
+      if (mode == dictFormState.read) vState = true;
+      if (mode == dictFormState.edit) vKeyStr = this.state.editKeys;
+      for (var key in this.state) {
+        if (key != "editKeys") {
           this.state[key] = vState;
-          if(vKeyStr != "") {
-            if(vKeyStr.indexOf(key) >= 0) this.state[key] = true;
+          if (vKeyStr != "") {
+            if (vKeyStr.indexOf(key) >= 0) this.state[key] = true;
           }
         }
       }
     },
 
-    getFormData: function(opt, callback) {
+    getFormData: function (opt, callback) {
       opt = opt || {};
-      request.post(this, opt.url || this.urls.form, opt.data, function(data) {
+      request.post(this, opt.url || this.urls.form, opt.data, function (data) {
         this.setFormState(state);
         this[opt.formData || 'formData'] = data;
         this.formData = data;

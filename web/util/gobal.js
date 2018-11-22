@@ -4063,7 +4063,8 @@ var publicRender = {
           input: function (val) {
             row[col.prop] = val;
           }
-        }
+        },
+        slot: col.slot || ''
       });
     },
     getRenderIndex: function (h, params) {

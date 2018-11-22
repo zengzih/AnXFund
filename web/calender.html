@@ -211,7 +211,7 @@
                 noneFirstWidth += flexWidth;
                 column.realWidth = (column.minWidth || 80) + flexWidth;
               });
-              flexColumns[0].realWidth = (flexColumns[0].minWidth || 80) + totalFlexWidth - noneFirstWidth;
+              flexColumns[0].realWidth = (flexColumns[0].minWidth || 80) + totalFlexWidth - noneFirstWidth - 1;
             }
           },
           calendarTool: function (type) {
@@ -305,6 +305,9 @@
           handleNextWeek: function(type) {
             var details = this.getDateDetail;
             if (type){
+              var date = new Date();
+              this.year = date.getFullYear();
+              this.month = date.getMonth();
               var thisWeek = {};
             } else {
               var thisWeek = this.column[this.column.length - 1] || {};
@@ -599,25 +602,6 @@
           ])
         }
       },
-      vCalenderWeek: {
-        props: {
-          data: Array,
-          year: {
-            type: [String, Number],
-            default: ''
-          },
-          month: {
-            type: [String, Number],
-            default: ''
-          }
-        },
-        data: function () {
-
-        },
-        render: function (h) {
-
-        }
-      }
     }
   });
 
