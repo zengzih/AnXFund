@@ -527,14 +527,32 @@ var publicComponents = {
           }.bind(this));
           return obj;
         },
+        getDateGroup: function(date, type) {
+          var thisIndex = 0;
+          this.getDateDetail.forEach(function (elt, index) {
+            if (date.year) {
+              if (date.year === elt.year && date.month === elt.month && date.day === elt.day) {
+                thisIndex = (type == 'prev' ? index : index + 1);
+              }
+            } else {
+              if (elt.isDefaultDate) {
+                thisIndex = index;
+              }
+            }
+          });
+          return thisIndex;
+        },
         handlePrevWeek: function () {
           var details = this.getDateDetail;
-          var column = this.deepCopy(this.column);
-          var thisWeek = column[0] || {};
-          var obj = this.getWeekColumn(thisWeek);
-          var index = obj.weekIndex !== undefined ? obj.weekIndex + 1 : obj.defaultIndex;
+          var columnStart = this.column.length ? this.column[0]: {};
+          var index = this.getDateGroup(columnStart, 'prev');
           if (index < 7) {
-            this.month--;
+            if (this.month == 1) {
+              this.month = 12;
+              this.year--;
+            } else {
+              this.month--;
+            }
             details = this.getDateDetail.concat(details);
             // 去重
             var unique = {};
@@ -546,22 +564,35 @@ var publicComponents = {
                 unique[JSON.stringify(details[i])] = true;
               }
             }
-            obj = this.getWeekColumn(thisWeek, details);
-            index = obj.weekIndex !== undefined ? obj.weekIndex : obj.defaultIndex;
+            // 重新获取坐标
+            index = this.getDateGroup(columnStart, 'prev');
           }
           this.column = details.slice(index - 7, index);
         },
         handleNextWeek: function (type) {
           var details = this.getDateDetail;
-          if (type) {
+          if (type){
+            var isDefault = false;
+            details.forEach(function(elt) {
+              if (elt.isDefaultDate) {
+                isDefault = true;
+              }
+            });
+            // 当返回的回来的时间集里面没有当前的日期时，就获取当前的日期
+            if (!details.length || isDefault === false) {
+              var date = new Date();
+              this.year = date.getFullYear();
+              this.month = date.getMonth() + 1;
+              details = this.getDateDetail;
+            }
             var thisWeek = {};
           } else {
             var thisWeek = this.column[this.column.length - 1] || {};
           }
           var obj = this.getWeekColumn(thisWeek);
-          var index = obj.weekIndex ? obj.weekIndex + 1 : obj.defaultIndex;
+          var index = obj.weekIndex ? obj.weekIndex  + 1 : obj.defaultIndex;
           var column = details.slice(index, index + 7);
-          this.column = this.getWeekLength({column: column, type: 'next', detail: details, index: index});
+          this.column = this.getWeekLength({ column: column, type: 'next', detail: details, index: index });
         },
         // 判断当前月份是否够，不够要用下个月份补齐
         getWeekLength: function (opt) {
@@ -667,7 +698,7 @@ var publicComponents = {
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
           }
-        }
+        },
       },
       render: function (h) {
         var _this = this;
