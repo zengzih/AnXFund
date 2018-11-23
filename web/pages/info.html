@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>信息披露任务管理</title>
+    <link rel="stylesheet" href="../scui/1.0.1/index.css">
+    <link rel="stylesheet" href="../scui/2.0.1/index.css">
+    <link rel="stylesheet" href="../scui/2.0.1/skin1.css">
+    <link rel="stylesheet" href="../iconfont/17.7.5/iconfont.css">
+    <link rel="stylesheet" href="../styles/btn.styles.css">
+    <link rel="stylesheet" href="../styles/fonts/style.css">
+    <script src="../jQuery/1.11.3/jquery.min.js"></script>
+    <script src="../vue/2.3.0/index.js"></script>
+    <script src="../scui/2.0.1/index.js"></script>
+    <script src="../vue-resource/1.3.3/vue-resource.min.js"></script>
+    <script src="../scui/1.0.1/scui.min.js"></script>
+    <script src="../util/publicComponents.js"></script>
+    <script src="../util/gobal.js"></script>
+    <style>
+        .sc-layout-label--normal .el-form-item__label {
+            width: 105px;
+        }
+    </style>
+</head>
+<body>
+<div id="app" class="sc-theme is-standard sc-box-content-app" v-cloak>
+    <sc-form-layout class="sc-box-content sc-box-conten-search">
+        <sc-form-layout-row>
+            <sc-form-layout-col>
+                <el-form :model="queryConditions">
+                    <sc-form-layout class="bmargin">
+                        <sc-form-layout-row>
+                            <sc-form-layout-col>
+                                <el-button type="primary" @click="launchTask">发起</el-button>
+                                <el-button type="primary" @click="onSendMail">发提醒</el-button>
+                                <el-button type="download" @click="batchDownload">批量下载</el-button>
+                                <el-button type="export" @click="exportDep">部门事项导出</el-button>
+                            </sc-form-layout-col>
+                        </sc-form-layout-row>
+                    </sc-form-layout>
+                </el-form>
+            </sc-form-layout-col>
+        </sc-form-layout-row>
+    </sc-form-layout>
+    <!--查询条件-->
+    <el-form :model="queryConditions"
+             class="border bgcolor padding ymargin ad-query sc-box-content sc-box-content-adquery">
+        <sc-form-layout class="bmargin" label-width="middle">
+            <sc-form-layout-row>
+                <sc-form-layout-col>
+                    <sc-form-layout>
+                        <sc-form-layout-row v-for="(List,index) in searchFormData">
+                            <sc-form-layout-col width="standard" v-for="item in List">
+                                <el-form-item :label="item.label">
+                                    <el-select v-if="item.type=='select'" v-model="queryConditions[item.prop]" clearable
+                                               :clearable="item.clearable" filterable placeholder="请选择">
+                                        <el-option
+                                                v-for="item1 in searchSelectOptions[item.prop]"
+                                                :key="item1.ftKey"
+                                                :label="item1.ftName"
+                                                :value="item1.ftKey">
+                                        </el-option>
+                                    </el-select>
+                                    <el-input v-if="item.type=='input'" v-model="queryConditions[item.prop]"
+                                              placeholder="请输入内容">
+                                    </el-input>
+                                    <el-date-picker v-if="item.type=='date'" align="right" placeholder="选择日期范围" ref="dateRange" type="daterange"
+                                                    v-model="queryConditions.dateRange">
+                                    </el-date-picker>
+                                </el-form-item>
+                            </sc-form-layout-col>
+                            <sc-form-layout-col align="right" class="sc-button-resetQuery" v-if="index==2" >
+                                <el-form-item>
+                                    <el-button type="primary"  @click="onQuery">查询</el-button>
+                                    <el-button @click="onReset">重置</el-button>
+                                </el-form-item>
+                            </sc-form-layout-col>
+                        </sc-form-layout-row>
+                    </sc-form-layout>
+                </sc-form-layout-col>
+            </sc-form-layout-row>
+        </sc-form-layout>
+    </el-form>
+    <!--表格数据-->
+    <el-table :data="tableData" v-loading="loading" highlight-current-row  :height="tableHeight"
+              fit border stripe style="width:100%">
+        <el-table-column type="selection" width="50" header-align="center" align="center"></el-table-column>
+        <el-table-column v-for="item in tabHeadData" :prop="item.prop" :label="item.label" min-width="160"
+                         align="center" sortable="custom" show-overflow-tooltip
+                         :header-align="tableColumnLayOut.headerAlign">
+        </el-table-column>
+        <el-table-column label="操作" show-overflow-tooltip width="140" :header-align="tableColumnLayOut.headerAlign" align="center">
+            <template scope="scope">
+                <el-tooltip v-for="btn in actions" :enterable="tooltipEnterable" class="item" effect="light"
+                             :content="btn.text" placement="left">
+                    <el-button @click.native.prevent="isBtn(btn.text,scope.$index,tableData)" type="text" size="small">
+                        <i :class="btn.icon"></i>
+                    </el-button>
+                </el-tooltip>
+            </template>
+        </el-table-column>
+    </el-table>
+    <!--分页-->
+    <el-pagination class="sc-box-content sc-box-content-page"
+                   @size-change="onHandleSizeChange" @current-change="onHandleCurrentChange"
+                   :current-page="currentPage" :page-sizes="pageSizes" :page-size="pageSize"
+                   layout="total, sizes, prev, pager, next, jumper" :total="totalPage">
+    </el-pagination>
+    <!--发起任务弹窗-->
+    <el-dialog title="发起任务" v-model="dialogTaskVisible"  class="sc-small" :close-on-click-modal="false" @close="onCancel('task')">
+        <el-form :model="taskFormData" class="el-form-content" ref="formData">
+            <sc-form-layout label-width = "normal"  class="el_body_upload">
+                <sc-form-layout-row>
+                    <sc-form-layout-col>
+                        <el-form-item label="信披事项名称"prop="secCode" :rules="[{ required: true, message: '信披事项名称不能为空'}]" >
+                            <sc-select-tree
+                                :data="data"
+                                v-model="value"
+                                :default-props="defaultProps">
+                            </sc-select-tree>
+                        </el-form-item>
+                    </sc-form-layout-col>
+                </sc-form-layout-row>
+
+                <sc-form-layout-row>
+                    <sc-form-layout-col>
+                        <el-form-item label="指定日期" prop="secName" :rules="[{ required: true, message: '指定日期不能为空'}]" >
+                            <el-date-picker align="right" placeholder="选择日期" ref="dateRange" type="date"
+                                            v-model="queryConditions.dateRange">
+                            </el-date-picker>
+                        </el-form-item>
+                    </sc-form-layout-col>
+                </sc-form-layout-row>
+
+            </sc-form-layout>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button type="primary" @click="onSubmit('task')" v-cloak>确定</el-button>
+            <el-button @click="onCancel('task')" v-cloak>取消</el-button>
+        </div>
+    </el-dialog>
+    <!--部门事项导出弹窗-->
+    <el-dialog title="部门事项导出" v-model="dialogDepVisible" @close="onCancel"   class="sc-small" :close-on-click-modal="false" @close="onCancel('dep')">
+        <el-form :model="taskFormData" class="el-form-content" ref="formData">
+            <sc-form-layout label-width = "normal"  class="el_body_upload">
+                <sc-form-layout-row>
+                    <sc-form-layout-col>
+                        <el-form-item label="主责任部门"prop="secCode" :rules="[{ required: true, message: '主责任部门不能为空'}]" >
+                            <sc-select-tree
+                                    :data="data"
+                                    v-model="value"
+                                    :default-props="defaultProps">
+                            </sc-select-tree>
+                        </el-form-item>
+                    </sc-form-layout-col>
+                </sc-form-layout-row>
+
+                <sc-form-layout-row>
+                    <sc-form-layout-col>
+                        <el-form-item label="截止日期" prop="secName" :rules="[{ required: true, message: '截止日期不能为空'}]" >
+                            <el-date-picker align="right" placeholder="选择日期" ref="dateRange" type="date"
+                                            v-model="queryConditions.dateRange">
+                            </el-date-picker>
+                        </el-form-item>
+                    </sc-form-layout-col>
+                </sc-form-layout-row>
+
+            </sc-form-layout>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button type="primary" @click="onSubmit('dep')" v-cloak>确定</el-button>
+            <el-button @click="onCancel('dep')" v-cloak>取消</el-button>
+        </div>
+    </el-dialog>
+
+</div>
+
+<script>
+    var ctxPath = '${pageContext.request.contextPath}';
+    new Vue({
+        el:'#app',
+        data:{
+            urls:{
+                getTableData:ctxPath + "/cbannountcementController/dataGrid"
+            },
+            queryConditions:{
+                // 信披事项名称
+                // 信披事项名称
+                // 信息披露子类型
+                // 披露方式
+                // 产品生命周期
+                // 信批事项类型
+                // 触发频率
+                // 发起部门
+                // 主责任部门
+                // 主责任岗位
+                // 截止日期
+            },
+            orderPageQuery:{},//排序与分页的查询条件要与查询区的分开
+            searchFormData: [
+                [{
+                    prop: 'formtypes',
+                    label: '信披事项名称',
+                    type: 'input',
+                    clearable:true
+                }, {
+                    prop: 'formName',
+                    label: '信息披露类型',
+                    type: 'select'
+                }, {
+                    prop: 'databaseState',
+                    label: '信息披露子类型',
+                    type: 'select'
+                }, {
+                    prop: 'databaseState',
+                    label: '披露方式',
+                    type: 'select'
+                }],[{
+                    prop: 'formtypes',
+                    label: '产品生命周期',
+                    type: 'select',
+                    clearable:true
+                }, {
+                    prop: 'formName',
+                    label: '信披事项类型',
+                    type: 'select'
+                }, {
+                    prop: 'databaseState',
+                    label: '触发频率',
+                    type: 'select'
+                }, {
+                    prop: 'databaseState',
+                    label: '发起部门',
+                    type: 'select'
+                }],[{
+                    prop: 'formtypes',
+                    label: '主责任部门',
+                    type: 'select',
+                    clearable:true
+                }, {
+                    prop: 'formName',
+                    label: '主责任岗位',
+                    type: 'select'
+                }, {
+                    prop: 'databaseState',
+                    label: '截止日期',
+                    type: 'date'
+                }]
+            ],
+            searchSelectOptions: {
+                formtypes: [] //信息披露类型
+                                // 信息披露子类型
+                                // 披露方式
+                                // 产品生命周期
+                                // 信批事项类型
+                                // 触发频率
+                                // 发起部门
+                                // 主责任部门
+                                // 主责任岗位
+            },
+            tabHeadData: [   //表头数据
+                {
+                    prop: 'jformType',
+                    label: '信披事项名称'
+                }, {
+                    prop: 'tableName',
+                    label: '信息披露类型'
+                }, {
+                    prop: 'formClassify',
+                    label: '披露方式'
+                }, {
+                    prop: 'content',
+                    label: '产品生命周期'
+                }, {
+                    prop: 'jformVersion',
+                    label: '信息事项类型'
+                }, {
+                    prop: 'isDbSynch',
+                    label: '触发频率'
+                }, {
+                    prop: 'isDbSynch',
+                    label: '发起部门'
+                }, {
+                    prop: 'isDbSynch',
+                    label: '主责任部门'
+                }, {
+                    prop: 'isDbSynch',
+                    label: '主责任岗位'
+                }, {
+                    prop: 'isDbSynch',
+                    label: '截止日期'
+                }, {
+                    prop: 'isDbSynch',
+                    label: '完成状态'
+                }
+            ],
+            tableData: [{
+                jformType:'aaaaaaaa',
+                tableName:'bbbbbbbbbbbbb'
+            }], //表格数据
+            loading:false,
+            tableHeight: 500,
+            tableColumnLayOut: "",  //表头对齐方式
+            actions: { //操作按钮显示
+                download: {},
+                readFile: {
+                    name: "readFile",
+                    text: "查看文件",
+                    icon: "iconfont sc-icon-download",
+                    visible: true
+                },
+                readProcess: {
+                    name: "readProcess",
+                    text: "查看流程",
+                    icon: "iconfont sc-icon-download",
+                    visible: true
+                },
+                del:{}
+            },
+            queryInit:{},
+            currentPage: 1,
+            totalPage:0,
+            pageSize:0,
+            pageSizes:[],
+            dialogTaskVisible:false,
+            dialogDepVisible:false,
+            taskFormData:[],
+            defaultProps: {
+                children: 'children',
+                label: 'label',
+                nodeKey: 'id'
+            },
+            data:[],
+            value:'',
+            tooltipEnterable: false
+        },
+        created:function(){
+            $("body").addClass("sc-skin1");
+            var _this=this;
+            this.pageSize=gobal.pagination.pageSize;
+            this.pageSizes=gobal.pagination.pageSizes;
+
+            //表格数据加载
+            this.queryConditions[gobal.pagination.page]=1;
+            this.queryConditions[gobal.pagination.rows]=this.pageSize;
+            this.queryInit = utils.myAssign({}, this.queryInit, this.queryConditions);
+            this.orderPageQuery = utils.myAssign({}, this.orderPageQuery, this.queryConditions);
+            this.formDataInit = utils.myAssign({}, this.formDataInit, this.formData);
+            // gobal.dataInit(this);
+            // this.getTableData();
+            this.actions = this.getActionbtns(this.actions, gobal.getActions());
+            // this.tableColumnLayOut = globalLayOut.getTableColumn();
+            // this.actions=gobal.getActions(this.urls);
+            // gobal.btnAuthorityControl(this.urls, this.oprBtn);
+        },
+        methods:{
+            getActionbtns: function (actions, getActions) {
+                for (var itema in actions) {
+                    for (var itemg in getActions) {
+                        if (itema == itemg) {
+                            actions[itema] = getActions[itemg];
+                        }
+                    }
+                }
+                return actions;
+            },
+            //获取查询条件下拉数据
+            getSearchOption:function(param){
+                var _this=this;
+                var param = {};
+                request.post(this, this.urls.getTableData, param,function(data){
+                   _this.searchSelectOptions[param] = data.rows;
+                });
+            },
+            //获取表格数据
+            getTableData:function(queryConditions){
+                var _this=this;
+                var curQueryConditions = utils.isNotEmpty(queryConditions) ? queryConditions : this.queryConditions;
+                request.post(this, this.urls.getTableData, curQueryConditions,function(data){
+                    _this.tableData=data.rows;
+                    _this.totalPage=data.total;
+                    _this.currentPage = curQueryConditions.page || 1;
+                });
+            },
+            //发起
+            launchTask:function(){
+                // 显示弹窗
+                this.dialogTaskVisible = true;
+                // 获取信披事项名称下拉数据
+            },
+            //提交
+            onSubmit:function(type){
+                if(type=='task'){
+
+                }
+            },
+            // 发送邮件
+            onSendMail:function(index, rows){
+                var _this=this;
+                var para={logIds:rows[index].logId};
+                var obj={
+                    title:"提示",
+                    text:"此操作将催发邮件,是否继续?",
+                    oKText:"确 定",
+                    cancelText:"取 消",
+                    type:"warning"
+                };
+                this.oprUrl=this.urls.sendMail;
+                gobal.openComfirm(this,obj,function(){
+                    request.post(_this,_this.oprUrl,para,function(data){
+                        gobal.messageShow(_this,data);
+                    });
+                });
+            },
+            //批量下载
+            batchDownload:function(){
+                var _this = this;
+                if (!_this.attaSelections.strIds) {
+                    var obj = {
+                        title : "提示",
+                        text : "请先选择附件!",
+                        oKText : "确 定",
+                        cancelText : "取 消",
+                        type : "warning"
+                    };
+                    gobal.openComfirm(_this, obj, function() {});
+                    return;
+                }
+                var para = {
+                    ids : ""
+                };
+                try {
+                    UrlUtils.download(_this.urls.batchDownload, para, true);
+                } catch (e) {
+                    gobal.messageShow(_this, {
+                        success : false,
+                        msg : "下载失败！"
+                    });
+                }
+            },
+            //部门事项导出
+            exportDep:function(){
+                this.dialogDepVisible = true;
+            },
+            onQuery:function(){
+
+            },
+            onHandleSizeChange:function(){
+
+            },
+            onHandleCurrentChange:function(){
+
+            },
+            onReset:function(){
+
+            },
+            onCancel:function(type){
+                if(type=='task'){
+                    this.dialogTaskVisible = false;
+                }else{
+                    this.dialogDepVisible = false;
+                }
+            }
+        }
+    })
+</script>
+</body>
+</html>

@@ -305,9 +305,19 @@
           handleNextWeek: function(type) {
             var details = this.getDateDetail;
             if (type){
-              var date = new Date();
-              this.year = date.getFullYear();
-              this.month = date.getMonth();
+              var isDefault = false;
+              details.forEach(function(elt) {
+                if (elt.isDefaultDate) {
+                  isDefault = true;
+                }
+              });
+              // 当返回的回来的时间集里面没有当前的日期时，就获取当前的日期
+              if (!details.length || isDefault === false) {
+                var date = new Date();
+                this.year = date.getFullYear();
+                this.month = date.getMonth() + 1;
+                details = this.getDateDetail;
+              }
               var thisWeek = {};
             } else {
               var thisWeek = this.column[this.column.length - 1] || {};
